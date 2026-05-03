@@ -34,16 +34,16 @@ export default function Sites() {
   }
 
   async function addSite() {
-    setMessage("Add site button clicked...");
-
     if (!siteName.trim()) {
       setMessage("Please enter a site name");
       return;
     }
 
+    setMessage("Adding site...");
+
     const { error } = await supabase.from("sites").insert({
       site_name: siteName,
-      developer: developer,
+      developer,
       status: "active"
     });
 
@@ -52,9 +52,9 @@ export default function Sites() {
       return;
     }
 
-    setMessage("Site added successfully");
     setSiteName("");
     setDeveloper("");
+    setMessage("Site added successfully");
     loadSites();
   }
 
@@ -63,53 +63,62 @@ export default function Sites() {
   }, []);
 
   return (
-    <main style={{ padding: 40, fontFamily: "Arial" }}>
+    <main>
       <h1>Sites</h1>
+      <p>Create and manage your active developments.</p>
 
-      <p style={{ background: "#eee", padding: 10 }}>
-        Status: {message}
-      </p>
+      <div className="status-box">Status: {message}</div>
 
-      <div style={{ marginTop: 20 }}>
-        <input
-          value={siteName}
-          onChange={(e) => setSiteName(e.target.value)}
-          placeholder="Site name"
-          style={{ padding: 10, marginRight: 10 }}
-        />
+      <div className="card">
+        <h2>Add New Site</h2>
 
-        <input
-          value={developer}
-          onChange={(e) => setDeveloper(e.target.value)}
-          placeholder="Developer"
-          style={{ padding: 10, marginRight: 10 }}
-        />
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <input
+            value={siteName}
+            onChange={(e) => setSiteName(e.target.value)}
+            placeholder="Site name"
+          />
 
-        <button type="button" onClick={addSite} style={{ padding: 10 }}>
-          Add Site
-        </button>
+          <input
+            value={developer}
+            onChange={(e) => setDeveloper(e.target.value)}
+            placeholder="Developer"
+          />
+
+          <button type="button" onClick={addSite}>
+            Add Site
+          </button>
+        </div>
       </div>
 
-      <div style={{ marginTop: 30 }}>
+      <div className="card">
         <h2>Saved Sites</h2>
 
         {sites.length === 0 && <p>No sites yet.</p>}
 
-        {sites.map((site) => (
-          <div
-            key={site.id}
-            style={{
-              border: "1px solid #ccc",
-              padding: 15,
-              marginBottom: 10
-            }}
-          >
-            <h3>{site.site_name}</h3>
-            <p>Developer: {site.developer || "Not set"}</p>
-            <p>Status: {site.status}</p>
-            <a href="/programme">View Programme</a>
-          </div>
-        ))}
+        <div style={{ display: "grid", gap: 14 }}>
+          {sites.map((site) => (
+            <div
+              key={site.id}
+              style={{
+                border: "1px solid #edf1f5",
+                borderRadius: 14,
+                padding: 18,
+                background: "#fafcff"
+              }}
+            >
+              <h3 style={{ margin: "0 0 6px" }}>{site.site_name}</h3>
+              <p style={{ margin: "0 0 6px" }}>
+                Developer: {site.developer || "Not set"}
+              </p>
+              <p style={{ margin: "0 0 12px" }}>Status: {site.status}</p>
+
+              <a href="/programme">
+                <button>View Programme</button>
+              </a>
+            </div>
+          ))}
+        </div>
       </div>
     </main>
   );
