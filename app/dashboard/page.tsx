@@ -7,6 +7,7 @@ export default function Dashboard() {
         <a href="/sites">Sites</a>
         <a href="/programme">Programme</a>
         <a href="/suggested-edits">Suggested Edits</a>
+        <a href="/approvals">Approvals</a>
       </div>
 
       <div style={{ marginTop: 30 }}>
