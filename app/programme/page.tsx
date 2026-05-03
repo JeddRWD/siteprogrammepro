@@ -19,6 +19,7 @@ type Task = {
 };
 
 export default function Programme() {
+  const [role, setRole] = useState("");
   const [sites, setSites] = useState<Site[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedSite, setSelectedSite] = useState("");
@@ -29,6 +30,28 @@ export default function Programme() {
   const [endDate, setEndDate] = useState("");
   const [status, setStatus] = useState("Planned");
   const [message, setMessage] = useState("");
+
+  async function loadRole() {
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData?.user) {
+      setMessage("Not logged in. Please login first.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .single();
+
+    if (error) {
+      setMessage("Role load error: " + error.message);
+      return;
+    }
+
+    setRole(data.role);
+  }
 
   async function loadSites() {
     const { data } = await supabase
@@ -63,6 +86,11 @@ export default function Programme() {
   }
 
   async function addTask() {
+    if (role === "subcontractor") {
+      setMessage("Subcontractors cannot add programme tasks.");
+      return;
+    }
+
     if (!plotNumber || !taskName) {
       setMessage("Enter plot + task");
       return;
@@ -101,6 +129,7 @@ export default function Programme() {
   }
 
   useEffect(() => {
+    loadRole();
     loadSites();
   }, []);
 
@@ -123,7 +152,11 @@ export default function Programme() {
     <main>
       <h1>Programme</h1>
 
-      <div className="status-box">Status: {message}</div>
+      <div className="status-box">
+        Status: {message}
+        <br />
+        Role: {role || "Loading..."}
+      </div>
 
       <div className="card">
         <h2>Select Site</h2>
@@ -140,54 +173,63 @@ export default function Programme() {
         </select>
       </div>
 
-      <div className="card">
-        <h2>Add Task</h2>
+      {role !== "subcontractor" && (
+        <div className="card">
+          <h2>Add Task</h2>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input
-            placeholder="Plot"
-            value={plotNumber}
-            onChange={(e) => setPlotNumber(e.target.value)}
-          />
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <input
+              placeholder="Plot"
+              value={plotNumber}
+              onChange={(e) => setPlotNumber(e.target.value)}
+            />
 
-          <input
-            placeholder="Task"
-            value={taskName}
-            onChange={(e) => setTaskName(e.target.value)}
-          />
+            <input
+              placeholder="Task"
+              value={taskName}
+              onChange={(e) => setTaskName(e.target.value)}
+            />
 
-          <input
-            placeholder="Trade"
-            value={trade}
-            onChange={(e) => setTrade(e.target.value)}
-          />
+            <input
+              placeholder="Trade"
+              value={trade}
+              onChange={(e) => setTrade(e.target.value)}
+            />
 
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
 
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
 
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option>Planned</option>
-            <option>In Progress</option>
-            <option>Complete</option>
-            <option>At Risk</option>
-            <option>Delayed</option>
-          </select>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option>Planned</option>
+              <option>In Progress</option>
+              <option>Complete</option>
+              <option>At Risk</option>
+              <option>Delayed</option>
+            </select>
 
-          <button onClick={addTask}>Add</button>
+            <button onClick={addTask}>Add</button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {role === "subcontractor" && (
+        <div className="card">
+          <h2>Subcontractor View</h2>
+          <p>
+            You can view programme tasks and suggest changes, but you cannot add
+            or edit programme tasks directly.
+          </p>
+        </div>
+      )}
 
       <div className="card">
         <h2>Programme Tasks</h2>
