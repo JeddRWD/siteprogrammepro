@@ -6,15 +6,11 @@ import { supabase } from "../../lib/supabase";
 export default function Profile() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("site_manager");
+  const [trade, setTrade] = useState("");
   const [message, setMessage] = useState("Loading profile...");
 
   async function loadProfile() {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-
-    if (userError) {
-      setMessage("User error: " + userError.message);
-      return;
-    }
+    const { data: userData } = await supabase.auth.getUser();
 
     if (!userData?.user) {
       setMessage("No logged-in user found. Please login again.");
@@ -25,7 +21,7 @@ export default function Profile() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, trade")
       .eq("id", userData.user.id)
       .single();
 
@@ -35,30 +31,27 @@ export default function Profile() {
     }
 
     setRole(data.role || "site_manager");
+    setTrade(data.trade || "");
     setMessage("Profile loaded");
   }
 
-  async function updateRole() {
-    setMessage("Save button clicked...");
-
+  async function updateProfile() {
     if (!user) {
-      setMessage("No user loaded. Please refresh or login again.");
+      setMessage("No user loaded. Please login again.");
       return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("profiles")
-      .update({ role: role })
-      .eq("id", user.id)
-      .select();
+      .update({ role, trade })
+      .eq("id", user.id);
 
     if (error) {
       setMessage("Update error: " + error.message);
       return;
     }
 
-    setMessage("Role updated to: " + role);
-    console.log("Updated profile:", data);
+    setMessage("Profile updated");
   }
 
   useEffect(() => {
@@ -80,11 +73,26 @@ export default function Profile() {
           <option value="contracts_manager">Contracts Manager</option>
         </select>
 
-        <br />
-        <br />
+        <br /><br />
 
-        <button type="button" onClick={updateRole}>
-          Save Role
+        <h2>Your Trade</h2>
+
+        <select value={trade} onChange={(e) => setTrade(e.target.value)}>
+          <option value="">Not applicable</option>
+          <option value="Electrical">Electrical</option>
+          <option value="Plumbing">Plumbing</option>
+          <option value="Drylining">Drylining</option>
+          <option value="Joinery">Joinery</option>
+          <option value="Brickwork">Brickwork</option>
+          <option value="Roofing">Roofing</option>
+          <option value="Decorating">Decorating</option>
+          <option value="Groundworks">Groundworks</option>
+        </select>
+
+        <br /><br />
+
+        <button type="button" onClick={updateProfile}>
+          Save Profile
         </button>
       </div>
     </main>
