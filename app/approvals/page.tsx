@@ -51,7 +51,8 @@ export default function Approvals() {
       return;
     }
 
-    setEdits((data as SuggestedEdit[]) || []);
+    // 👇 THIS IS THE FIX
+    setEdits((data as unknown as SuggestedEdit[]) || []);
     setMessage("Pending approvals loaded");
   }
 
