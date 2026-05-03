@@ -230,7 +230,9 @@ export default function Programme() {
                 <td>{task.end_date}</td>
                 <td>{task.status}</td>
                 <td>
-                  <a href="/suggested-edits">Suggest Change</a>
+                  <a href={`/suggested-edits?taskId=${task.id}`}>
+  Suggest Change
+</a>
                 </td>
               </tr>
             ))}
