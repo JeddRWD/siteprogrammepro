@@ -6,12 +6,20 @@ import { supabase } from "../../lib/supabase";
 export default function Profile() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState("site_manager");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("Loading profile...");
 
   async function loadProfile() {
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
 
-    if (!userData?.user) return;
+    if (userError) {
+      setMessage("User error: " + userError.message);
+      return;
+    }
+
+    if (!userData?.user) {
+      setMessage("No logged-in user found. Please login again.");
+      return;
+    }
 
     setUser(userData.user);
 
@@ -22,27 +30,35 @@ export default function Profile() {
       .single();
 
     if (error) {
-      setMessage("Error loading profile");
+      setMessage("Profile load error: " + error.message);
       return;
     }
 
-    setRole(data.role);
+    setRole(data.role || "site_manager");
+    setMessage("Profile loaded");
   }
 
   async function updateRole() {
-    if (!user) return;
+    setMessage("Save button clicked...");
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role })
-      .eq("id", user.id);
-
-    if (error) {
-      setMessage(error.message);
+    if (!user) {
+      setMessage("No user loaded. Please refresh or login again.");
       return;
     }
 
-    setMessage("Role updated");
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ role: role })
+      .eq("id", user.id)
+      .select();
+
+    if (error) {
+      setMessage("Update error: " + error.message);
+      return;
+    }
+
+    setMessage("Role updated to: " + role);
+    console.log("Updated profile:", data);
   }
 
   useEffect(() => {
@@ -64,9 +80,12 @@ export default function Profile() {
           <option value="contracts_manager">Contracts Manager</option>
         </select>
 
-        <br /><br />
+        <br />
+        <br />
 
-        <button onClick={updateRole}>Save Role</button>
+        <button type="button" onClick={updateRole}>
+          Save Role
+        </button>
       </div>
     </main>
   );
