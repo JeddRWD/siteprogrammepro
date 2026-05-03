@@ -1,0 +1,53 @@
+"use client";
+
+import { useState } from "react";
+import { supabase } from "../../lib/supabase";
+
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function login() {
+    if (!email) {
+      setMessage("Enter your email");
+      return;
+    }
+
+    setMessage("Sending login link...");
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin + "/dashboard"
+      }
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Check your email for the login link.");
+  }
+
+  return (
+    <main>
+      <div className="card" style={{ maxWidth: 500 }}>
+        <h1>Login</h1>
+        <p>Enter your email to access SiteProgrammePro.</p>
+
+        <div className="status-box">Status: {message}</div>
+
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ width: "100%", marginBottom: 12 }}
+        />
+
+        <button onClick={login}>Send Login Link</button>
+      </div>
+    </main>
+  );
+}
