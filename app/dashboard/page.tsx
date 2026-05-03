@@ -4,13 +4,34 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function Dashboard() {
+  const [role, setRole] = useState("");
   const [sites, setSites] = useState(0);
   const [tasks, setTasks] = useState(0);
   const [pending, setPending] = useState(0);
   const [message, setMessage] = useState("");
 
   async function loadDashboard() {
-    setMessage("Loading dashboard...");
+    setMessage("Loading...");
+
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData?.user) {
+      setMessage("Not logged in");
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .single();
+
+    if (!profile) {
+      setMessage("No profile found");
+      return;
+    }
+
+    setRole(profile.role);
 
     const { count: siteCount } = await supabase
       .from("sites")
@@ -28,6 +49,7 @@ export default function Dashboard() {
     setSites(siteCount || 0);
     setTasks(taskCount || 0);
     setPending(pendingCount || 0);
+
     setMessage("Dashboard loaded");
   }
 
@@ -38,7 +60,6 @@ export default function Dashboard() {
   return (
     <main>
       <h1>Dashboard</h1>
-      <p>Welcome to SiteProgrammePro.</p>
 
       <div className="status-box">Status: {message}</div>
 
@@ -60,29 +81,34 @@ export default function Dashboard() {
       </div>
 
       <div className="card">
-        <h2>Quick Actions</h2>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <a href="/sites">
-            <button>Add / View Sites</button>
-          </a>
-
-          <a href="/programme">
-            <button>Open Programme</button>
-          </a>
-
-          <a href="/approvals">
-            <button>Review Approvals</button>
-          </a>
-        </div>
+        <h2>Your Role</h2>
+        <p style={{ fontWeight: "bold" }}>{role}</p>
       </div>
 
       <div className="card">
-        <h2>Core Workflow</h2>
-        <p>
-          Create sites, add programme tasks, allow subcontractors to suggest
-          changes, then approve or reject those changes.
-        </p>
+        <h2>Actions</h2>
+
+        {role === "site_manager" && (
+          <>
+            <a href="/sites"><button>Manage Sites</button></a>
+            <a href="/programme"><button>Manage Programme</button></a>
+            <a href="/approvals"><button>Approve Changes</button></a>
+          </>
+        )}
+
+        {role === "subcontractor" && (
+          <>
+            <a href="/programme"><button>View My Tasks</button></a>
+          </>
+        )}
+
+        {role === "contracts_manager" && (
+          <>
+            <a href="/sites"><button>View All Sites</button></a>
+            <a href="/programme"><button>View Programme</button></a>
+            <a href="/approvals"><button>Review Changes</button></a>
+          </>
+        )}
       </div>
     </main>
   );
