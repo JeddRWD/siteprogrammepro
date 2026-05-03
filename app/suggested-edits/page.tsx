@@ -1,10 +1,10 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
-export default function SuggestedEdits() {
+function SuggestedEditsContent() {
   const params = useSearchParams();
   const taskId = params.get("taskId");
 
@@ -15,7 +15,10 @@ export default function SuggestedEdits() {
   const [message, setMessage] = useState("");
 
   async function loadTask() {
-    if (!taskId) return;
+    if (!taskId) {
+      setMessage("No task selected.");
+      return;
+    }
 
     const { data, error } = await supabase
       .from("programme_tasks")
@@ -32,7 +35,7 @@ export default function SuggestedEdits() {
   }
 
   async function submitEdit() {
-    if (!taskId) return;
+    if (!taskId || !task) return;
 
     const { error } = await supabase.from("suggested_edits").insert({
       task_id: taskId,
@@ -40,7 +43,7 @@ export default function SuggestedEdits() {
       current_end_date: task.end_date,
       suggested_start_date: newStart || null,
       suggested_end_date: newEnd || null,
-      reason: reason,
+      reason,
       status: "pending"
     });
 
@@ -63,9 +66,7 @@ export default function SuggestedEdits() {
     <main style={{ padding: 40, fontFamily: "Arial" }}>
       <h1>Suggest Change</h1>
 
-      <p style={{ background: "#eee", padding: 10 }}>
-        {message}
-      </p>
+      <p style={{ background: "#eee", padding: 10 }}>{message}</p>
 
       {!task && <p>Loading task...</p>}
 
@@ -77,21 +78,19 @@ export default function SuggestedEdits() {
             Current: {task.start_date} → {task.end_date}
           </p>
 
-          <div style={{ marginTop: 20 }}>
-            <input
-              type="date"
-              value={newStart}
-              onChange={(e) => setNewStart(e.target.value)}
-              style={{ padding: 10, marginRight: 10 }}
-            />
+          <input
+            type="date"
+            value={newStart}
+            onChange={(e) => setNewStart(e.target.value)}
+            style={{ padding: 10, marginRight: 10 }}
+          />
 
-            <input
-              type="date"
-              value={newEnd}
-              onChange={(e) => setNewEnd(e.target.value)}
-              style={{ padding: 10, marginRight: 10 }}
-            />
-          </div>
+          <input
+            type="date"
+            value={newEnd}
+            onChange={(e) => setNewEnd(e.target.value)}
+            style={{ padding: 10, marginRight: 10 }}
+          />
 
           <textarea
             value={reason}
@@ -100,14 +99,21 @@ export default function SuggestedEdits() {
             style={{ marginTop: 20, padding: 10, width: "100%" }}
           />
 
-          <button
-            onClick={submitEdit}
-            style={{ marginTop: 20, padding: 10 }}
-          >
+          <br />
+
+          <button onClick={submitEdit} style={{ marginTop: 20, padding: 10 }}>
             Submit Suggestion
           </button>
         </div>
       )}
     </main>
+  );
+}
+
+export default function SuggestedEdits() {
+  return (
+    <Suspense fallback={<p style={{ padding: 40 }}>Loading...</p>}>
+      <SuggestedEditsContent />
+    </Suspense>
   );
 }
