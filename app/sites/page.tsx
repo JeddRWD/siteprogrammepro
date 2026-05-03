@@ -14,7 +14,30 @@ export default function Sites() {
   const [sites, setSites] = useState<Site[]>([]);
   const [siteName, setSiteName] = useState("");
   const [developer, setDeveloper] = useState("");
+  const [role, setRole] = useState("");
   const [message, setMessage] = useState("");
+
+  async function loadRole() {
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData?.user) {
+      setMessage("Not logged in. Please login first.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userData.user.id)
+      .single();
+
+    if (error) {
+      setMessage("Role load error: " + error.message);
+      return;
+    }
+
+    setRole(data.role);
+  }
 
   async function loadSites() {
     setMessage("Loading sites...");
@@ -34,6 +57,11 @@ export default function Sites() {
   }
 
   async function addSite() {
+    if (role === "subcontractor") {
+      setMessage("Subcontractors cannot create sites.");
+      return;
+    }
+
     if (!siteName.trim()) {
       setMessage("Please enter a site name");
       return;
@@ -59,6 +87,7 @@ export default function Sites() {
   }
 
   useEffect(() => {
+    loadRole();
     loadSites();
   }, []);
 
@@ -67,29 +96,45 @@ export default function Sites() {
       <h1>Sites</h1>
       <p>Create and manage your active developments.</p>
 
-      <div className="status-box">Status: {message}</div>
-
-      <div className="card">
-        <h2>Add New Site</h2>
-
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <input
-            value={siteName}
-            onChange={(e) => setSiteName(e.target.value)}
-            placeholder="Site name"
-          />
-
-          <input
-            value={developer}
-            onChange={(e) => setDeveloper(e.target.value)}
-            placeholder="Developer"
-          />
-
-          <button type="button" onClick={addSite}>
-            Add Site
-          </button>
-        </div>
+      <div className="status-box">
+        Status: {message}
+        <br />
+        Role: {role || "Loading..."}
       </div>
+
+      {role !== "subcontractor" && (
+        <div className="card">
+          <h2>Add New Site</h2>
+
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <input
+              value={siteName}
+              onChange={(e) => setSiteName(e.target.value)}
+              placeholder="Site name"
+            />
+
+            <input
+              value={developer}
+              onChange={(e) => setDeveloper(e.target.value)}
+              placeholder="Developer"
+            />
+
+            <button type="button" onClick={addSite}>
+              Add Site
+            </button>
+          </div>
+        </div>
+      )}
+
+      {role === "subcontractor" && (
+        <div className="card">
+          <h2>Restricted Access</h2>
+          <p>
+            Subcontractors can view invited programme tasks, but cannot create
+            or manage sites.
+          </p>
+        </div>
+      )}
 
       <div className="card">
         <h2>Saved Sites</h2>
