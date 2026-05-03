@@ -10,7 +10,6 @@ type Site = {
 
 type Task = {
   id: string;
-  site_id: string;
   plot_number: string | null;
   task_name: string | null;
   trade: string | null;
@@ -32,15 +31,10 @@ export default function Programme() {
   const [message, setMessage] = useState("");
 
   async function loadSites() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("sites")
       .select("id, site_name")
       .order("created_at", { ascending: false });
-
-    if (error) {
-      setMessage("Site load error: " + error.message);
-      return;
-    }
 
     setSites(data || []);
 
@@ -51,16 +45,16 @@ export default function Programme() {
   }
 
   async function loadTasks(siteId: string) {
-    setMessage("Loading programme tasks...");
+    setMessage("Loading programme...");
 
     const { data, error } = await supabase
       .from("programme_tasks")
-      .select("id, site_id, plot_number, task_name, trade, start_date, end_date, status")
+      .select("*")
       .eq("site_id", siteId)
       .order("start_date", { ascending: true });
 
     if (error) {
-      setMessage("Task load error: " + error.message);
+      setMessage("Error: " + error.message);
       return;
     }
 
@@ -69,13 +63,8 @@ export default function Programme() {
   }
 
   async function addTask() {
-    if (!selectedSite) {
-      setMessage("Please select a site");
-      return;
-    }
-
-    if (!plotNumber.trim() || !taskName.trim()) {
-      setMessage("Please enter plot number and task name");
+    if (!plotNumber || !taskName) {
+      setMessage("Enter plot + task");
       return;
     }
 
@@ -92,7 +81,7 @@ export default function Programme() {
     });
 
     if (error) {
-      setMessage("Insert error: " + error.message);
+      setMessage("Error: " + error.message);
       return;
     }
 
@@ -103,7 +92,6 @@ export default function Programme() {
     setEndDate("");
     setStatus("Planned");
 
-    setMessage("Task added successfully");
     loadTasks(selectedSite);
   }
 
@@ -116,20 +104,33 @@ export default function Programme() {
     loadSites();
   }, []);
 
+  function getStatusStyle(status: string | null) {
+    switch (status) {
+      case "Complete":
+        return { background: "#d4edda", color: "#155724" };
+      case "In Progress":
+        return { background: "#fff3cd", color: "#856404" };
+      case "Delayed":
+        return { background: "#f8d7da", color: "#721c24" };
+      case "At Risk":
+        return { background: "#ffe5b4", color: "#8a5a00" };
+      default:
+        return { background: "#e9f3ff", color: "#0f2747" };
+    }
+  }
+
   return (
-    <main style={{ padding: 40, fontFamily: "Arial" }}>
+    <main>
       <h1>Programme</h1>
 
-      <p style={{ background: "#eee", padding: 10 }}>
-        Status: {message}
-      </p>
+      <div className="status-box">Status: {message}</div>
 
-      <div style={{ marginTop: 20 }}>
-        <label>Choose Site: </label>
+      <div className="card">
+        <h2>Select Site</h2>
+
         <select
           value={selectedSite}
           onChange={(e) => handleSiteChange(e.target.value)}
-          style={{ padding: 10, minWidth: 250 }}
         >
           {sites.map((site) => (
             <option key={site.id} value={site.id}>
@@ -139,75 +140,61 @@ export default function Programme() {
         </select>
       </div>
 
-      <div
-        style={{
-          marginTop: 30,
-          padding: 20,
-          border: "1px solid #ccc"
-        }}
-      >
-        <h2>Add Programme Task</h2>
+      <div className="card">
+        <h2>Add Task</h2>
 
-        <input
-          value={plotNumber}
-          onChange={(e) => setPlotNumber(e.target.value)}
-          placeholder="Plot number"
-          style={{ padding: 10, marginRight: 10, marginBottom: 10 }}
-        />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            placeholder="Plot"
+            value={plotNumber}
+            onChange={(e) => setPlotNumber(e.target.value)}
+          />
 
-        <input
-          value={taskName}
-          onChange={(e) => setTaskName(e.target.value)}
-          placeholder="Task name"
-          style={{ padding: 10, marginRight: 10, marginBottom: 10 }}
-        />
+          <input
+            placeholder="Task"
+            value={taskName}
+            onChange={(e) => setTaskName(e.target.value)}
+          />
 
-        <input
-          value={trade}
-          onChange={(e) => setTrade(e.target.value)}
-          placeholder="Trade"
-          style={{ padding: 10, marginRight: 10, marginBottom: 10 }}
-        />
+          <input
+            placeholder="Trade"
+            value={trade}
+            onChange={(e) => setTrade(e.target.value)}
+          />
 
-        <br />
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
 
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          style={{ padding: 10, marginRight: 10 }}
-        />
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
 
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          style={{ padding: 10, marginRight: 10 }}
-        />
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option>Planned</option>
+            <option>In Progress</option>
+            <option>Complete</option>
+            <option>At Risk</option>
+            <option>Delayed</option>
+          </select>
 
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          style={{ padding: 10, marginRight: 10 }}
-        >
-          <option>Planned</option>
-          <option>In Progress</option>
-          <option>Complete</option>
-          <option>At Risk</option>
-          <option>Delayed</option>
-        </select>
-
-        <button type="button" onClick={addTask} style={{ padding: 10 }}>
-          Add Task
-        </button>
+          <button onClick={addTask}>Add</button>
+        </div>
       </div>
 
-      <div style={{ marginTop: 30 }}>
+      <div className="card">
         <h2>Programme Tasks</h2>
 
-        {tasks.length === 0 && <p>No tasks yet for this site.</p>}
+        {tasks.length === 0 && <p>No tasks yet.</p>}
 
-        <table border={1} cellPadding={10} style={{ marginTop: 20 }}>
+        <table>
           <thead>
             <tr>
               <th>Plot</th>
@@ -216,7 +203,7 @@ export default function Programme() {
               <th>Start</th>
               <th>End</th>
               <th>Status</th>
-              <th>Action</th>
+              <th></th>
             </tr>
           </thead>
 
@@ -228,11 +215,22 @@ export default function Programme() {
                 <td>{task.trade}</td>
                 <td>{task.start_date}</td>
                 <td>{task.end_date}</td>
-                <td>{task.status}</td>
+                <td>
+                  <span
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      ...getStatusStyle(task.status)
+                    }}
+                  >
+                    {task.status}
+                  </span>
+                </td>
                 <td>
                   <a href={`/suggested-edits?taskId=${task.id}`}>
-  Suggest Change
-</a>
+                    Suggest Change
+                  </a>
                 </td>
               </tr>
             ))}
