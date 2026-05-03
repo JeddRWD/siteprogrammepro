@@ -14,35 +14,45 @@ export default function Sites() {
   const [sites, setSites] = useState<Site[]>([]);
   const [siteName, setSiteName] = useState("");
   const [developer, setDeveloper] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   async function loadSites() {
+    setMessage("Loading sites...");
+
     const { data, error } = await supabase
       .from("sites")
       .select("id, site_name, developer, status")
       .order("created_at", { ascending: false });
 
-    if (!error && data) setSites(data);
-  }
-
-  async function addSite() {
-    if (!siteName.trim()) return alert("Enter a site name");
-
-    setLoading(true);
-
-    const { error } = await supabase.from("sites").insert({
-      site_name: siteName,
-      developer,
-      status: "active"
-    });
-
-    setLoading(false);
-
     if (error) {
-      alert(error.message);
+      setMessage("Load error: " + error.message);
       return;
     }
 
+    setSites(data || []);
+    setMessage("Sites loaded");
+  }
+
+  async function addSite() {
+    setMessage("Add site button clicked...");
+
+    if (!siteName.trim()) {
+      setMessage("Please enter a site name");
+      return;
+    }
+
+    const { error } = await supabase.from("sites").insert({
+      site_name: siteName,
+      developer: developer,
+      status: "active"
+    });
+
+    if (error) {
+      setMessage("Insert error: " + error.message);
+      return;
+    }
+
+    setMessage("Site added successfully");
     setSiteName("");
     setDeveloper("");
     loadSites();
@@ -55,6 +65,10 @@ export default function Sites() {
   return (
     <main style={{ padding: 40, fontFamily: "Arial" }}>
       <h1>Sites</h1>
+
+      <p style={{ background: "#eee", padding: 10 }}>
+        Status: {message}
+      </p>
 
       <div style={{ marginTop: 20 }}>
         <input
@@ -71,8 +85,8 @@ export default function Sites() {
           style={{ padding: 10, marginRight: 10 }}
         />
 
-        <button onClick={addSite} style={{ padding: 10 }}>
-          {loading ? "Adding..." : "Add Site"}
+        <button type="button" onClick={addSite} style={{ padding: 10 }}>
+          Add Site
         </button>
       </div>
 
