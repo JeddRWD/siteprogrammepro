@@ -25,6 +25,7 @@ export default function RootLayout({
 
             <nav>
 <a href="/login">Login</a>
+              <a href="/profile">Profile</a>
               <a href="/dashboard">Dashboard</a>
               <a href="/sites">Sites</a>
               <a href="/programme">Programme</a>
