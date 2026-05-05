@@ -260,6 +260,7 @@ export default function ProgrammeGantt() {
     setEditStartDate(task.start_date || "");
     setEditEndDate(task.end_date || "");
     setEditStatus(task.status || "Planned");
+    setMessage(`Editing Plot ${task.plot_number} - ${task.task_name}`);
   }
 
   async function saveTaskChanges() {
@@ -463,6 +464,7 @@ export default function ProgrammeGantt() {
     if (!canEdit || !task.start_date || !task.end_date) return;
 
     pointerDownEvent.preventDefault();
+    pointerDownEvent.stopPropagation();
 
     const startX = pointerDownEvent.clientX;
     const originalEndDate = task.end_date;
@@ -685,16 +687,21 @@ export default function ProgrammeGantt() {
               <option>Delayed</option>
             </select>
 
-           <button
-  type="button"
-  className="secondary-button"
-  onClick={() => {
-    setSelectedTask(null);
-    setMessage("Edit cancelled");
-  }}
->
-  Cancel
-</button>
+            <button type="button" onClick={saveTaskChanges}>
+              Save Changes
+            </button>
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                setSelectedTask(null);
+                setMessage("Edit cancelled");
+              }}
+            >
+              Cancel
+            </button>
+
             <button
               type="button"
               className="danger-button"
@@ -716,8 +723,8 @@ export default function ProgrammeGantt() {
 
         {canEdit ? (
           <p>
-            Drag bars left/right to move tasks. Drag the right edge to change
-            duration. Click a bar to edit.
+            Double click a bar to edit. Drag bars left/right to move tasks. Drag
+            the right edge to change duration. Click × to delete.
           </p>
         ) : (
           <p>
