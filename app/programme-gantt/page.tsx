@@ -90,7 +90,8 @@ function DraggableTaskBar({
           : undefined
       }}
       title={`${task.trade} - ${task.task_name}`}
-      onClick={(event) => {
+      onDoubleClickCapture={(event) => {
+        event.preventDefault();
         event.stopPropagation();
         onSelect(task);
       }}
@@ -108,6 +109,7 @@ function DraggableTaskBar({
             className="gantt-delete-button"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
+              event.preventDefault();
               event.stopPropagation();
               onDelete(task);
             }}
@@ -119,6 +121,7 @@ function DraggableTaskBar({
           <div
             className="gantt-resize-handle"
             onPointerDown={(event) => {
+              event.preventDefault();
               event.stopPropagation();
               onResizeStart(task, event);
             }}
@@ -682,18 +685,16 @@ export default function ProgrammeGantt() {
               <option>Delayed</option>
             </select>
 
-            <button type="button" onClick={saveTaskChanges}>
-              Save Changes
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setSelectedTask(null)}
-            >
-              Cancel
-            </button>
-
+           <button
+  type="button"
+  className="secondary-button"
+  onClick={() => {
+    setSelectedTask(null);
+    setMessage("Edit cancelled");
+  }}
+>
+  Cancel
+</button>
             <button
               type="button"
               className="danger-button"
