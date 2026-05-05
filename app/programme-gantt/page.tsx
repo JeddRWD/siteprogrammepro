@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  DndContext,
+  DragEndEvent,
+  useDraggable
+} from "@dnd-kit/core";
 import { supabase } from "../../lib/supabase";
 
 type Site = {
@@ -19,10 +24,13 @@ type Task = {
 };
 
 function daysBetween(a: Date, b: Date) {
-  return Math.max(
-    0,
-    Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
-  );
+  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function addDays(dateString: string, days: number) {
+  const date = new Date(dateString);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split("T")[0];
 }
 
 function formatDate(date: Date) {
@@ -32,6 +40,61 @@ function formatDate(date: Date) {
   });
 }
 
+function getBarColour(status: string | null) {
+  switch (status) {
+    case "Complete":
+      return "#17803d";
+    case "In Progress":
+      return "#d99904";
+    case "Delayed":
+      return "#b31313";
+    case "At Risk":
+      return "#e56b00";
+    default:
+      return "#1368b3";
+  }
+}
+
+function DraggableTaskBar({
+  task,
+  left,
+  width,
+  canDrag
+}: {
+  task: Task;
+  left: number;
+  width: number;
+  canDrag: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: task.id,
+    disabled: !canDrag
+  });
+
+  const style: React.CSSProperties = {
+    left: `${left}%`,
+    width: `${width}%`,
+    background: getBarColour(task.status),
+    cursor: canDrag ? "grab" : "default",
+    transform: transform
+      ? `translate3d(${transform.x}px, 0, 0)`
+      : undefined
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="gantt-bar"
+      style={style}
+      title={`${task.trade} - ${task.task_name}`}
+      {...listeners}
+      {...attributes}
+    >
+      {task.trade} - {task.task_name}
+    </div>
+  );
+}
+
 export default function ProgrammeGantt() {
   const [role, setRole] = useState("");
   const [userTrade, setUserTrade] = useState("");
@@ -39,6 +102,8 @@ export default function ProgrammeGantt() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedSite, setSelectedSite] = useState("");
   const [message, setMessage] = useState("");
+
+  const canDrag = role === "site_manager" || role === "contracts_manager";
 
   async function loadRole() {
     const { data: userData } = await supabase.auth.getUser();
@@ -159,19 +224,56 @@ export default function ProgrammeGantt() {
     );
   }, [datedTasks]);
 
-  function getBarColour(status: string | null) {
-    switch (status) {
-      case "Complete":
-        return "#17803d";
-      case "In Progress":
-        return "#d99904";
-      case "Delayed":
-        return "#b31313";
-      case "At Risk":
-        return "#e56b00";
-      default:
-        return "#1368b3";
+  async function handleDragEnd(event: DragEndEvent) {
+    if (!canDrag) return;
+
+    const taskId = String(event.active.id);
+    const task = tasks.find((t) => t.id === taskId);
+
+    if (!task || !task.start_date || !task.end_date) return;
+
+    const ganttWidth = document
+      .querySelector(".gantt-track")
+      ?.getBoundingClientRect().width;
+
+    if (!ganttWidth) return;
+
+    const pixelsPerDay = ganttWidth / range.days;
+    const movedDays = Math.round(event.delta.x / pixelsPerDay);
+
+    if (movedDays === 0) return;
+
+    const newStartDate = addDays(task.start_date, movedDays);
+    const newEndDate = addDays(task.end_date, movedDays);
+
+    setMessage(`Moving task by ${movedDays} day(s)...`);
+
+    const { error } = await supabase
+      .from("programme_tasks")
+      .update({
+        start_date: newStartDate,
+        end_date: newEndDate
+      })
+      .eq("id", task.id);
+
+    if (error) {
+      setMessage("Move error: " + error.message);
+      return;
     }
+
+    setTasks((current) =>
+      current.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              start_date: newStartDate,
+              end_date: newEndDate
+            }
+          : t
+      )
+    );
+
+    setMessage("Task moved and saved");
   }
 
   return (
@@ -185,6 +287,8 @@ export default function ProgrammeGantt() {
         {role === "subcontractor"
           ? ` | Trade: ${userTrade || "Not set"}`
           : ""}
+        <br />
+        Drag Enabled: {canDrag ? "Yes" : "No"}
       </div>
 
       <div className="card no-print">
@@ -210,64 +314,73 @@ export default function ProgrammeGantt() {
           {range.end.toLocaleDateString("en-GB")}
         </p>
 
+        {canDrag && (
+          <p>
+            Drag bars left or right to move tasks. Dates save automatically.
+          </p>
+        )}
+
+        {!canDrag && (
+          <p>
+            View only. Subcontractors can suggest changes but cannot drag tasks.
+          </p>
+        )}
+
         {datedTasks.length === 0 && <p>No dated tasks to show.</p>}
 
-        <div className="gantt-wrap">
-          <div className="gantt">
-            <div className="gantt-header-row">
-              <div className="gantt-label gantt-header-label">Plot</div>
+        <DndContext onDragEnd={handleDragEnd}>
+          <div className="gantt-wrap">
+            <div className="gantt">
+              <div className="gantt-header-row">
+                <div className="gantt-label gantt-header-label">Plot</div>
 
-              <div
-                className="gantt-date-bar"
-                style={{
-                  gridTemplateColumns: `repeat(${range.days}, minmax(70px, 1fr))`
-                }}
-              >
-                {dateColumns.map((date, index) => (
-                  <div key={index} className="gantt-date-cell">
-                    {formatDate(date)}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {tasksByPlot.map(([plot, plotTasks]) => (
-              <div className="gantt-row" key={plot}>
-                <div className="gantt-label">Plot {plot}</div>
-
-                <div className="gantt-track">
-                  {plotTasks.map((task) => {
-                    const start = new Date(task.start_date as string);
-                    const end = new Date(task.end_date as string);
-
-                    const offset =
-                      (daysBetween(range.start, start) / range.days) * 100;
-
-                    const width = Math.max(
-                      4,
-                      ((daysBetween(start, end) + 1) / range.days) * 100
-                    );
-
-                    return (
-                      <div
-                        key={task.id}
-                        className="gantt-bar"
-                        style={{
-                          left: `${offset}%`,
-                          width: `${width}%`,
-                          background: getBarColour(task.status)
-                        }}
-                        title={`${task.trade} - ${task.task_name}`}
-                      >
-                        {task.trade} - {task.task_name}
-                      </div>
-                    );
-                  })}
+                <div
+                  className="gantt-date-bar"
+                  style={{
+                    gridTemplateColumns: `repeat(${range.days}, minmax(70px, 1fr))`
+                  }}
+                >
+                  {dateColumns.map((date, index) => (
+                    <div key={index} className="gantt-date-cell">
+                      {formatDate(date)}
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+
+              {tasksByPlot.map(([plot, plotTasks]) => (
+                <div className="gantt-row" key={plot}>
+                  <div className="gantt-label">Plot {plot}</div>
+
+                  <div className="gantt-track">
+                    {plotTasks.map((task) => {
+                      const start = new Date(task.start_date as string);
+                      const end = new Date(task.end_date as string);
+
+                      const offset =
+                        (daysBetween(range.start, start) / range.days) * 100;
+
+                      const width = Math.max(
+                        4,
+                        ((daysBetween(start, end) + 1) / range.days) * 100
+                      );
+
+                      return (
+                        <DraggableTaskBar
+                          key={task.id}
+                          task={task}
+                          left={offset}
+                          width={width}
+                          canDrag={canDrag}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </DndContext>
       </div>
     </main>
   );
