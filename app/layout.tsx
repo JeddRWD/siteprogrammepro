@@ -16,7 +16,11 @@ export default function RootLayout({
         <div className="app-shell">
           <aside className="sidebar">
             <div className="brand">
-              <img src="/logo.png" alt="SiteProgrammePro" className="logo" />
+              <img
+                src="/logo.png"
+                alt="SiteProgrammePro"
+                className="logo-full"
+              />
             </div>
 
             <nav>
