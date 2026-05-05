@@ -389,3 +389,62 @@ td {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.gantt-header-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: stretch;
+  border-bottom: 2px solid #cfd8e3;
+  margin-bottom: 6px;
+}
+
+.gantt-header-label {
+  background: #e9f3ff;
+  border-radius: 10px 0 0 10px;
+}
+
+.gantt-date-bar {
+  display: grid;
+  background: #e9f3ff;
+  border-radius: 0 10px 10px 0;
+  overflow: hidden;
+}
+
+.gantt-date-cell {
+  font-size: 11px;
+  font-weight: bold;
+  color: #0f2747;
+  text-align: center;
+  padding: 10px 4px;
+  border-left: 1px solid #cfd8e3;
+  white-space: nowrap;
+}
+
+.gantt-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  border-bottom: 1px solid #edf1f5;
+  min-height: 64px;
+}
+
+.gantt-track {
+  position: relative;
+  height: 48px;
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.gantt-bar {
+  position: absolute;
+  top: 8px;
+  height: 32px;
+  border-radius: 8px;
+  color: white;
+  font-size: 11px;
+  padding: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  touch-action: none;
+  user-select: none;
+}
