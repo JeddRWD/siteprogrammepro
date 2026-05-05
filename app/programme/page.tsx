@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+function formatDate(dateString: string | null) {
+  if (!dateString) return "-";
+
+  const date = new Date(dateString);
+
+  return date.toLocaleDateString("en-GB"); // DD/MM/YYYY
+}
 
 type Site = { id: string; site_name: string; };
 type Task = { id: string; plot_number: string | null; task_name: string | null; trade: string | null; start_date: string | null; end_date: string | null; status: string | null; };
@@ -74,7 +81,8 @@ export default function Programme() {
       <div className="card"><h2>Select Site</h2><select value={selectedSite} onChange={(e) => handleSiteChange(e.target.value)}>{sites.map((site) => <option key={site.id} value={site.id}>{site.site_name}</option>)}</select></div>
       {role !== "subcontractor" && <div className="card"><h2>Add Task</h2><div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><input placeholder="Plot" value={plotNumber} onChange={(e) => setPlotNumber(e.target.value)} /><input placeholder="Task" value={taskName} onChange={(e) => setTaskName(e.target.value)} /><select value={trade} onChange={(e) => setTrade(e.target.value)}><option>Electrical</option><option>Plumbing</option><option>Drylining</option><option>Joinery</option><option>Brickwork</option><option>Roofing</option><option>Decorating</option><option>Groundworks</option></select><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /><select value={status} onChange={(e) => setStatus(e.target.value)}><option>Planned</option><option>In Progress</option><option>Complete</option><option>At Risk</option><option>Delayed</option></select><button onClick={addTask}>Add</button></div></div>}
       {role === "subcontractor" && <div className="card"><h2>Subcontractor View</h2><p>You can view {userTrade || "your"} tasks and suggest changes, but cannot add or edit tasks directly.</p></div>}
-      <div className="card"><h2>Programme Tasks</h2>{visibleTasks.length === 0 && <p>No tasks to show.</p>}<table><thead><tr><th>Plot</th><th>Task</th><th>Trade</th><th>Start</th><th>End</th><th>Status</th><th></th></tr></thead><tbody>{visibleTasks.map((task) => <tr key={task.id}><td>{task.plot_number}</td><td>{task.task_name}</td><td>{task.trade}</td><td>{task.start_date}</td><td>{task.end_date}</td><td><span className="badge" style={getStatusStyle(task.status)}>{task.status}</span></td><td><a href={`/suggested-edits?taskId=${task.id}`}>Suggest Change</a></td></tr>)}</tbody></table></div>
+      <div className="card"><h2>Programme Tasks</h2>{visibleTasks.length === 0 && <p>No tasks to show.</p>}<table><thead><tr><th>Plot</th><th>Task</th><th>Trade</th><th>Start</th><th>End</th><th>Status</th><th></th></tr></thead><tbody>{visibleTasks.map((task) => <tr key={task.id}><td>{task.plot_number}</td><td>{task.task_name}</td><td>{task.trade}</td><td>{formatDate(task.start_date)}</td>
+<td>{formatDate(task.end_date)}</td><td><span className="badge" style={getStatusStyle(task.status)}>{task.status}</span></td><td><a href={`/suggested-edits?taskId=${task.id}`}>Suggest Change</a></td></tr>)}</tbody></table></div>
     </main>
   );
 }
