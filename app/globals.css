@@ -476,3 +476,57 @@ td {
 .gantt-resize-handle:hover {
   background: rgba(255, 255, 255, 0.65);
 }
+.gantt-grid {
+  background-image: linear-gradient(
+    to right,
+    rgba(15, 39, 71, 0.12) 1px,
+    transparent 1px
+  );
+}
+
+.gantt-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gantt-bar-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-right: 24px;
+}
+
+.gantt-delete-button {
+  position: absolute;
+  right: 12px;
+  top: 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: white;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.gantt-delete-button:hover {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.gantt-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 0 8px 8px 0;
+  z-index: 3;
+}
+
+.gantt-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
