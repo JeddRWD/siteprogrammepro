@@ -55,18 +55,25 @@ function DraggableTaskBar({
   task,
   left,
   width,
-  canDrag,
-  onResizeStart
+  canEdit,
+  onResizeStart,
+  onDelete,
+  onSelect
 }: {
   task: Task;
   left: number;
   width: number;
-  canDrag: boolean;
-  onResizeStart: (task: Task, event: React.MouseEvent<HTMLDivElement>) => void;
+  canEdit: boolean;
+  onResizeStart: (
+    task: Task,
+    event: React.PointerEvent<HTMLDivElement>
+  ) => void;
+  onDelete: (task: Task) => void;
+  onSelect: (task: Task) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
-    disabled: !canDrag
+    disabled: !canEdit
   });
 
   return (
@@ -77,26 +84,47 @@ function DraggableTaskBar({
         left: `${left}%`,
         width: `${width}%`,
         background: getBarColour(task.status),
-        cursor: canDrag ? "grab" : "default",
+        cursor: canEdit ? "grab" : "pointer",
         transform: transform
           ? `translate3d(${transform.x}px, 0, 0)`
           : undefined
       }}
       title={`${task.trade} - ${task.task_name}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect(task);
+      }}
       {...listeners}
       {...attributes}
     >
-      {task.trade} - {task.task_name}
+      <span className="gantt-bar-text">
+        {task.trade} - {task.task_name}
+      </span>
 
-      {canDrag && (
-        <div
-          className="gantt-resize-handle"
-          onMouseDown={(event) => {
-            event.stopPropagation();
-            onResizeStart(task, event);
-          }}
-          title="Resize duration"
-        />
+      {canEdit && (
+        <>
+          <button
+            type="button"
+            className="gantt-delete-button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(task);
+            }}
+            title="Delete task"
+          >
+            ×
+          </button>
+
+          <div
+            className="gantt-resize-handle"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              onResizeStart(task, event);
+            }}
+            title="Resize duration"
+          />
+        </>
       )}
     </div>
   );
@@ -116,6 +144,14 @@ export default function ProgrammeGantt() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [status, setStatus] = useState("Planned");
+
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editPlotNumber, setEditPlotNumber] = useState("");
+  const [editTaskName, setEditTaskName] = useState("");
+  const [editTrade, setEditTrade] = useState("Electrical");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editStatus, setEditStatus] = useState("Planned");
 
   const canEdit = role === "site_manager" || role === "contracts_manager";
 
@@ -213,8 +249,88 @@ export default function ProgrammeGantt() {
     loadTasks(selectedSite);
   }
 
+  function selectTask(task: Task) {
+    setSelectedTask(task);
+    setEditPlotNumber(task.plot_number || "");
+    setEditTaskName(task.task_name || "");
+    setEditTrade(task.trade || "Electrical");
+    setEditStartDate(task.start_date || "");
+    setEditEndDate(task.end_date || "");
+    setEditStatus(task.status || "Planned");
+  }
+
+  async function saveTaskChanges() {
+    if (!selectedTask || !canEdit) {
+      setMessage("No permission to edit this task.");
+      return;
+    }
+
+    if (!editPlotNumber || !editTaskName || !editStartDate || !editEndDate) {
+      setMessage("Enter plot, task, start date and end date.");
+      return;
+    }
+
+    if (new Date(editEndDate) < new Date(editStartDate)) {
+      setMessage("End date cannot be before start date.");
+      return;
+    }
+
+    setMessage("Saving task changes...");
+
+    const { error } = await supabase
+      .from("programme_tasks")
+      .update({
+        plot_number: editPlotNumber,
+        task_name: editTaskName,
+        trade: editTrade,
+        start_date: editStartDate,
+        end_date: editEndDate,
+        status: editStatus
+      })
+      .eq("id", selectedTask.id);
+
+    if (error) {
+      setMessage("Save error: " + error.message);
+      return;
+    }
+
+    setSelectedTask(null);
+    setMessage("Task updated");
+    loadTasks(selectedSite);
+  }
+
+  async function deleteTask(task: Task) {
+    if (!canEdit) {
+      setMessage("You do not have permission to delete tasks.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete task "${task.task_name}" from Plot ${task.plot_number}?`
+    );
+
+    if (!confirmed) return;
+
+    setMessage("Deleting task...");
+
+    const { error } = await supabase
+      .from("programme_tasks")
+      .delete()
+      .eq("id", task.id);
+
+    if (error) {
+      setMessage("Delete error: " + error.message);
+      return;
+    }
+
+    setSelectedTask(null);
+    setTasks((current) => current.filter((item) => item.id !== task.id));
+    setMessage("Task deleted");
+  }
+
   function handleSiteChange(siteId: string) {
     setSelectedSite(siteId);
+    setSelectedTask(null);
     loadTasks(siteId);
   }
 
@@ -333,16 +449,19 @@ export default function ProgrammeGantt() {
       )
     );
 
+    setSelectedTask(null);
     setMessage("Task moved and saved");
   }
 
   function handleResizeStart(
     task: Task,
-    mouseDownEvent: React.MouseEvent<HTMLDivElement>
+    pointerDownEvent: React.PointerEvent<HTMLDivElement>
   ) {
     if (!canEdit || !task.start_date || !task.end_date) return;
 
-    const startX = mouseDownEvent.clientX;
+    pointerDownEvent.preventDefault();
+
+    const startX = pointerDownEvent.clientX;
     const originalEndDate = task.end_date;
 
     const ganttWidth = document
@@ -353,10 +472,9 @@ export default function ProgrammeGantt() {
 
     const pixelsPerDay = ganttWidth / range.days;
 
-    function onMouseMove(moveEvent: MouseEvent) {
+    function onPointerMove(moveEvent: PointerEvent) {
       const deltaX = moveEvent.clientX - startX;
       const changedDays = Math.round(deltaX / pixelsPerDay);
-
       const proposedEndDate = addDays(originalEndDate, changedDays);
 
       if (new Date(proposedEndDate) < new Date(task.start_date as string)) {
@@ -375,9 +493,9 @@ export default function ProgrammeGantt() {
       );
     }
 
-    async function onMouseUp(upEvent: MouseEvent) {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
+    async function onPointerUp(upEvent: PointerEvent) {
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
 
       const deltaX = upEvent.clientX - startX;
       const changedDays = Math.round(deltaX / pixelsPerDay);
@@ -410,12 +528,13 @@ export default function ProgrammeGantt() {
         return;
       }
 
+      setSelectedTask(null);
       setMessage("Task duration updated");
       loadTasks(selectedSite);
     }
 
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
   }
 
   return (
@@ -509,6 +628,83 @@ export default function ProgrammeGantt() {
         </div>
       )}
 
+      {selectedTask && canEdit && (
+        <div className="card no-print">
+          <h2>Edit Task</h2>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <input
+              placeholder="Plot"
+              value={editPlotNumber}
+              onChange={(event) => setEditPlotNumber(event.target.value)}
+            />
+
+            <input
+              placeholder="Task"
+              value={editTaskName}
+              onChange={(event) => setEditTaskName(event.target.value)}
+            />
+
+            <select
+              value={editTrade}
+              onChange={(event) => setEditTrade(event.target.value)}
+            >
+              <option>Electrical</option>
+              <option>Plumbing</option>
+              <option>Drylining</option>
+              <option>Joinery</option>
+              <option>Brickwork</option>
+              <option>Roofing</option>
+              <option>Decorating</option>
+              <option>Groundworks</option>
+            </select>
+
+            <input
+              type="date"
+              value={editStartDate}
+              onChange={(event) => setEditStartDate(event.target.value)}
+            />
+
+            <input
+              type="date"
+              value={editEndDate}
+              onChange={(event) => setEditEndDate(event.target.value)}
+            />
+
+            <select
+              value={editStatus}
+              onChange={(event) => setEditStatus(event.target.value)}
+            >
+              <option>Planned</option>
+              <option>In Progress</option>
+              <option>Complete</option>
+              <option>At Risk</option>
+              <option>Delayed</option>
+            </select>
+
+            <button type="button" onClick={saveTaskChanges}>
+              Save Changes
+            </button>
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setSelectedTask(null)}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              className="danger-button"
+              onClick={() => deleteTask(selectedTask)}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <h2>Programme Timeline</h2>
 
@@ -520,7 +716,7 @@ export default function ProgrammeGantt() {
         {canEdit ? (
           <p>
             Drag bars left/right to move tasks. Drag the right edge to change
-            duration.
+            duration. Click a bar to edit.
           </p>
         ) : (
           <p>
@@ -555,7 +751,12 @@ export default function ProgrammeGantt() {
                 <div className="gantt-row" key={plot}>
                   <div className="gantt-label">Plot {plot}</div>
 
-                  <div className="gantt-track">
+                  <div
+                    className="gantt-track gantt-grid"
+                    style={{
+                      backgroundSize: `${100 / range.days}% 100%`
+                    }}
+                  >
                     {plotTasks.map((task) => {
                       const start = new Date(task.start_date as string);
                       const end = new Date(task.end_date as string);
@@ -574,8 +775,10 @@ export default function ProgrammeGantt() {
                           task={task}
                           left={offset}
                           width={width}
-                          canDrag={canEdit}
+                          canEdit={canEdit}
                           onResizeStart={handleResizeStart}
+                          onDelete={deleteTask}
+                          onSelect={selectTask}
                         />
                       );
                     })}
