@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 type Site = { id: string; site_name: string };
 type Plot = { id: string; plot_number: string; plot_name: string | null };
 type Trade = { id: string; trade_name: string; colour: string };
+type TaskTemplate = { id: string; task_name: string };
 
 type Task = {
   id: string;
@@ -29,7 +30,10 @@ function addDays(dateString: string, days: number) {
 }
 
 function formatDate(date: Date) {
-  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short"
+  });
 }
 
 function DraggableTaskBar({
@@ -114,6 +118,7 @@ export default function ProgrammeGantt() {
   const [sites, setSites] = useState<Site[]>([]);
   const [plots, setPlots] = useState<Plot[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedSite, setSelectedSite] = useState("");
   const [message, setMessage] = useState("");
@@ -168,7 +173,12 @@ export default function ProgrammeGantt() {
   }
 
   async function loadSiteData(siteId: string) {
-    await Promise.all([loadPlots(siteId), loadTrades(siteId), loadTasks(siteId)]);
+    await Promise.all([
+      loadPlots(siteId),
+      loadTrades(siteId),
+      loadTaskTemplates(siteId),
+      loadTasks(siteId)
+    ]);
   }
 
   async function loadPlots(siteId: string) {
@@ -197,6 +207,21 @@ export default function ProgrammeGantt() {
     if (data && data.length > 0) {
       setTrade(data[0].trade_name);
       setEditTrade(data[0].trade_name);
+    }
+  }
+
+  async function loadTaskTemplates(siteId: string) {
+    const { data } = await supabase
+      .from("task_templates")
+      .select("id, task_name")
+      .eq("site_id", siteId)
+      .order("task_name", { ascending: true });
+
+    setTaskTemplates(data || []);
+
+    if (data && data.length > 0) {
+      setTaskName(data[0].task_name);
+      setEditTaskName(data[0].task_name);
     }
   }
 
@@ -249,7 +274,6 @@ export default function ProgrammeGantt() {
       return;
     }
 
-    setTaskName("");
     setStartDate("");
     setEndDate("");
     setStatus("Planned");
@@ -260,7 +284,7 @@ export default function ProgrammeGantt() {
   function selectTask(task: Task) {
     setSelectedTask(task);
     setEditPlotNumber(task.plot_number || "");
-    setEditTaskName(task.task_name || "");
+    setEditTaskName(task.task_name || taskTemplates[0]?.task_name || "");
     setEditTrade(task.trade || trades[0]?.trade_name || "");
     setEditStartDate(task.start_date || "");
     setEditEndDate(task.end_date || "");
@@ -532,11 +556,14 @@ export default function ProgrammeGantt() {
               ))}
             </select>
 
-            <input
-              placeholder="Task"
-              value={taskName}
-              onChange={(event) => setTaskName(event.target.value)}
-            />
+            <select value={taskName} onChange={(event) => setTaskName(event.target.value)}>
+              <option value="">Select task</option>
+              {taskTemplates.map((task) => (
+                <option key={task.id} value={task.task_name}>
+                  {task.task_name}
+                </option>
+              ))}
+            </select>
 
             <select value={trade} onChange={(event) => setTrade(event.target.value)}>
               <option value="">Select trade</option>
@@ -579,7 +606,13 @@ export default function ProgrammeGantt() {
               ))}
             </select>
 
-            <input value={editTaskName} onChange={(event) => setEditTaskName(event.target.value)} />
+            <select value={editTaskName} onChange={(event) => setEditTaskName(event.target.value)}>
+              {taskTemplates.map((task) => (
+                <option key={task.id} value={task.task_name}>
+                  {task.task_name}
+                </option>
+              ))}
+            </select>
 
             <select value={editTrade} onChange={(event) => setEditTrade(event.target.value)}>
               {trades.map((item) => (
