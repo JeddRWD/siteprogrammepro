@@ -17,6 +17,7 @@ type Task = {
   start_date: string | null;
   end_date: string | null;
   status: string | null;
+
 };
 
 type Scale = "daily" | "weekly";
