@@ -564,4 +564,29 @@ td {
 
 .gantt-resize-handle:hover {
   background: rgba(255, 255, 255, 0.75);
+  .gantt-weekly {
+  min-width: 900px;
+}
+
+@media print {
+  .gantt-weekly {
+    min-width: 100% !important;
+  }
+
+  .gantt-print-card {
+    page-break-inside: avoid;
+  }
+
+  .gantt-date-cell {
+    font-size: 10px;
+  }
+
+  .gantt-label {
+    font-size: 11px;
+  }
+
+  .gantt-bar {
+    font-size: 9px;
+  }
+}
 }
