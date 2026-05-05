@@ -538,7 +538,14 @@ export default function ProgrammeGantt() {
 
         <a href="/site-admin" style={{ marginLeft: 12 }}>
           <button type="button">Site Admin</button>
-        </a>
+
+        <button
+  type="button"
+  onClick={() => window.print()}
+  style={{ marginLeft: 12 }}
+>
+  Print Gantt
+</button></a>
       </div>
 
       {canEdit && (
