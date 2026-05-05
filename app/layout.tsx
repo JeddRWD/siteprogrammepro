@@ -25,6 +25,7 @@ export default function RootLayout({
 
             <nav>
               <a href="/dashboard">Dashboard</a>
+              <a href="/site-admin">Site Admin</a>
               <a href="/sites">Sites</a>
               <a href="/programme">Programme Table</a>
               <a href="/programme-visual">Visual Board</a>
