@@ -525,6 +525,41 @@ td {
   background: rgba(255, 255, 255, 0.45);
   border-radius: 0 8px 8px 0;
   z-index: 3;
+  @media print {
+  .no-print,
+  .sidebar,
+  .status-box {
+    display: none !important;
+  }
+
+  .main-content {
+    padding: 0 !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  .gantt-wrap {
+    overflow: visible !important;
+  }
+
+  .gantt {
+    min-width: 100% !important;
+  }
+
+  .gantt-bar {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  @page {
+    size: A3 landscape;
+    margin: 8mm;
+  }
+}
 }
 
 .gantt-resize-handle:hover {
