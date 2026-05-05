@@ -4,10 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { DndContext, DragEndEvent, useDraggable } from "@dnd-kit/core";
 import { supabase } from "../../lib/supabase";
 
-type Site = {
-  id: string;
-  site_name: string;
-};
+type Site = { id: string; site_name: string };
+type Plot = { id: string; plot_number: string; plot_name: string | null };
+type Trade = { id: string; trade_name: string; colour: string };
 
 type Task = {
   id: string;
@@ -30,31 +29,14 @@ function addDays(dateString: string, days: number) {
 }
 
 function formatDate(date: Date) {
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short"
-  });
-}
-
-function getBarColour(status: string | null) {
-  switch (status) {
-    case "Complete":
-      return "#17803d";
-    case "In Progress":
-      return "#d99904";
-    case "Delayed":
-      return "#b31313";
-    case "At Risk":
-      return "#e56b00";
-    default:
-      return "#1368b3";
-  }
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
 function DraggableTaskBar({
   task,
   left,
   width,
+  colour,
   canEdit,
   onResizeStart,
   onDelete,
@@ -63,11 +45,9 @@ function DraggableTaskBar({
   task: Task;
   left: number;
   width: number;
+  colour: string;
   canEdit: boolean;
-  onResizeStart: (
-    task: Task,
-    event: React.PointerEvent<HTMLDivElement>
-  ) => void;
+  onResizeStart: (task: Task, event: React.PointerEvent<HTMLDivElement>) => void;
   onDelete: (task: Task) => void;
   onSelect: (task: Task) => void;
 }) {
@@ -83,13 +63,10 @@ function DraggableTaskBar({
       style={{
         left: `${left}%`,
         width: `${width}%`,
-        background: getBarColour(task.status),
+        background: colour,
         cursor: canEdit ? "grab" : "pointer",
-        transform: transform
-          ? `translate3d(${transform.x}px, 0, 0)`
-          : undefined
+        transform: transform ? `translate3d(${transform.x}px, 0, 0)` : undefined
       }}
-      title={`${task.trade} - ${task.task_name}`}
       onDoubleClickCapture={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -113,7 +90,6 @@ function DraggableTaskBar({
               event.stopPropagation();
               onDelete(task);
             }}
-            title="Delete task"
           >
             ×
           </button>
@@ -125,7 +101,6 @@ function DraggableTaskBar({
               event.stopPropagation();
               onResizeStart(task, event);
             }}
-            title="Resize duration"
           />
         </>
       )}
@@ -137,13 +112,15 @@ export default function ProgrammeGantt() {
   const [role, setRole] = useState("");
   const [userTrade, setUserTrade] = useState("");
   const [sites, setSites] = useState<Site[]>([]);
+  const [plots, setPlots] = useState<Plot[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedSite, setSelectedSite] = useState("");
   const [message, setMessage] = useState("");
 
   const [plotNumber, setPlotNumber] = useState("");
   const [taskName, setTaskName] = useState("");
-  const [trade, setTrade] = useState("Electrical");
+  const [trade, setTrade] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [status, setStatus] = useState("Planned");
@@ -151,7 +128,7 @@ export default function ProgrammeGantt() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editPlotNumber, setEditPlotNumber] = useState("");
   const [editTaskName, setEditTaskName] = useState("");
-  const [editTrade, setEditTrade] = useState("Electrical");
+  const [editTrade, setEditTrade] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editStatus, setEditStatus] = useState("Planned");
@@ -186,7 +163,40 @@ export default function ProgrammeGantt() {
 
     if (data && data.length > 0 && !selectedSite) {
       setSelectedSite(data[0].id);
-      loadTasks(data[0].id);
+      loadSiteData(data[0].id);
+    }
+  }
+
+  async function loadSiteData(siteId: string) {
+    await Promise.all([loadPlots(siteId), loadTrades(siteId), loadTasks(siteId)]);
+  }
+
+  async function loadPlots(siteId: string) {
+    const { data } = await supabase
+      .from("plots")
+      .select("id, plot_number, plot_name")
+      .eq("site_id", siteId)
+      .order("plot_number", { ascending: true });
+
+    setPlots(data || []);
+
+    if (data && data.length > 0) {
+      setPlotNumber(data[0].plot_number);
+    }
+  }
+
+  async function loadTrades(siteId: string) {
+    const { data } = await supabase
+      .from("trades")
+      .select("id, trade_name, colour")
+      .eq("site_id", siteId)
+      .order("trade_name", { ascending: true });
+
+    setTrades(data || []);
+
+    if (data && data.length > 0) {
+      setTrade(data[0].trade_name);
+      setEditTrade(data[0].trade_name);
     }
   }
 
@@ -208,23 +218,21 @@ export default function ProgrammeGantt() {
     setMessage("Gantt view loaded");
   }
 
+  function getTradeColour(tradeName: string | null) {
+    const found = trades.find((item) => item.trade_name === tradeName);
+    return found?.colour || "#1368b3";
+  }
+
   async function addTask() {
     if (!canEdit) {
       setMessage("You do not have permission to add tasks.");
       return;
     }
 
-    if (!selectedSite) {
-      setMessage("Please select a site.");
+    if (!selectedSite || !plotNumber || !taskName || !trade || !startDate || !endDate) {
+      setMessage("Enter plot, task, trade, start date and end date.");
       return;
     }
-
-    if (!plotNumber || !taskName || !startDate || !endDate) {
-      setMessage("Enter plot, task, start date and end date.");
-      return;
-    }
-
-    setMessage("Adding task...");
 
     const { error } = await supabase.from("programme_tasks").insert({
       site_id: selectedSite,
@@ -241,13 +249,10 @@ export default function ProgrammeGantt() {
       return;
     }
 
-    setPlotNumber("");
     setTaskName("");
-    setTrade("Electrical");
     setStartDate("");
     setEndDate("");
     setStatus("Planned");
-
     setMessage("Task added");
     loadTasks(selectedSite);
   }
@@ -256,7 +261,7 @@ export default function ProgrammeGantt() {
     setSelectedTask(task);
     setEditPlotNumber(task.plot_number || "");
     setEditTaskName(task.task_name || "");
-    setEditTrade(task.trade || "Electrical");
+    setEditTrade(task.trade || trades[0]?.trade_name || "");
     setEditStartDate(task.start_date || "");
     setEditEndDate(task.end_date || "");
     setEditStatus(task.status || "Planned");
@@ -264,13 +269,10 @@ export default function ProgrammeGantt() {
   }
 
   async function saveTaskChanges() {
-    if (!selectedTask || !canEdit) {
-      setMessage("No permission to edit this task.");
-      return;
-    }
+    if (!selectedTask || !canEdit) return;
 
-    if (!editPlotNumber || !editTaskName || !editStartDate || !editEndDate) {
-      setMessage("Enter plot, task, start date and end date.");
+    if (!editPlotNumber || !editTaskName || !editTrade || !editStartDate || !editEndDate) {
+      setMessage("Enter plot, task, trade, start date and end date.");
       return;
     }
 
@@ -278,8 +280,6 @@ export default function ProgrammeGantt() {
       setMessage("End date cannot be before start date.");
       return;
     }
-
-    setMessage("Saving task changes...");
 
     const { error } = await supabase
       .from("programme_tasks")
@@ -304,18 +304,13 @@ export default function ProgrammeGantt() {
   }
 
   async function deleteTask(task: Task) {
-    if (!canEdit) {
-      setMessage("You do not have permission to delete tasks.");
-      return;
-    }
+    if (!canEdit) return;
 
     const confirmed = window.confirm(
       `Delete task "${task.task_name}" from Plot ${task.plot_number}?`
     );
 
     if (!confirmed) return;
-
-    setMessage("Deleting task...");
 
     const { error } = await supabase
       .from("programme_tasks")
@@ -335,7 +330,7 @@ export default function ProgrammeGantt() {
   function handleSiteChange(siteId: string) {
     setSelectedSite(siteId);
     setSelectedTask(null);
-    loadTasks(siteId);
+    loadSiteData(siteId);
   }
 
   useEffect(() => {
@@ -348,17 +343,11 @@ export default function ProgrammeGantt() {
       ? tasks.filter((task) => task.trade === userTrade)
       : tasks;
 
-  const datedTasks = visibleTasks.filter(
-    (task) => task.start_date && task.end_date
-  );
+  const datedTasks = visibleTasks.filter((task) => task.start_date && task.end_date);
 
   const range = useMemo(() => {
     if (datedTasks.length === 0) {
-      return {
-        start: new Date(),
-        end: new Date(),
-        days: 1
-      };
+      return { start: new Date(), end: new Date(), days: 1 };
     }
 
     const starts = datedTasks.map((task) => new Date(task.start_date as string));
@@ -386,23 +375,22 @@ export default function ProgrammeGantt() {
     return dates;
   }, [range]);
 
-  const tasksByPlot = useMemo(() => {
-    const grouped: Record<string, Task[]> = {};
+  const plotRows = useMemo(() => {
+    const plotNumbers = new Set<string>();
 
+    plots.forEach((plot) => plotNumbers.add(plot.plot_number));
     datedTasks.forEach((task) => {
-      const plot = task.plot_number || "No Plot";
-
-      if (!grouped[plot]) {
-        grouped[plot] = [];
-      }
-
-      grouped[plot].push(task);
+      if (task.plot_number) plotNumbers.add(task.plot_number);
     });
 
-    return Object.entries(grouped).sort(([a], [b]) =>
+    return Array.from(plotNumbers).sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true })
     );
-  }, [datedTasks]);
+  }, [plots, datedTasks]);
+
+  function tasksForPlot(plot: string) {
+    return datedTasks.filter((task) => task.plot_number === plot);
+  }
 
   async function handleDragEnd(event: DragEndEvent) {
     if (!canEdit) return;
@@ -412,10 +400,7 @@ export default function ProgrammeGantt() {
 
     if (!task || !task.start_date || !task.end_date) return;
 
-    const ganttWidth = document
-      .querySelector(".gantt-track")
-      ?.getBoundingClientRect().width;
-
+    const ganttWidth = document.querySelector(".gantt-track")?.getBoundingClientRect().width;
     if (!ganttWidth) return;
 
     const pixelsPerDay = ganttWidth / range.days;
@@ -426,14 +411,9 @@ export default function ProgrammeGantt() {
     const newStartDate = addDays(task.start_date, movedDays);
     const newEndDate = addDays(task.end_date, movedDays);
 
-    setMessage(`Moving task by ${movedDays} day(s)...`);
-
     const { error } = await supabase
       .from("programme_tasks")
-      .update({
-        start_date: newStartDate,
-        end_date: newEndDate
-      })
+      .update({ start_date: newStartDate, end_date: newEndDate })
       .eq("id", task.id);
 
     if (error) {
@@ -441,59 +421,34 @@ export default function ProgrammeGantt() {
       return;
     }
 
-    setTasks((current) =>
-      current.map((item) =>
-        item.id === task.id
-          ? {
-              ...item,
-              start_date: newStartDate,
-              end_date: newEndDate
-            }
-          : item
-      )
-    );
-
     setSelectedTask(null);
     setMessage("Task moved and saved");
+    loadTasks(selectedSite);
   }
 
-  function handleResizeStart(
-    task: Task,
-    pointerDownEvent: React.PointerEvent<HTMLDivElement>
-  ) {
+  function handleResizeStart(task: Task, event: React.PointerEvent<HTMLDivElement>) {
     if (!canEdit || !task.start_date || !task.end_date) return;
 
-    pointerDownEvent.preventDefault();
-    pointerDownEvent.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
 
-    const startX = pointerDownEvent.clientX;
+    const startX = event.clientX;
     const originalEndDate = task.end_date;
-
-    const ganttWidth = document
-      .querySelector(".gantt-track")
-      ?.getBoundingClientRect().width;
+    const ganttWidth = document.querySelector(".gantt-track")?.getBoundingClientRect().width;
 
     if (!ganttWidth) return;
 
     const pixelsPerDay = ganttWidth / range.days;
 
     function onPointerMove(moveEvent: PointerEvent) {
-      const deltaX = moveEvent.clientX - startX;
-      const changedDays = Math.round(deltaX / pixelsPerDay);
+      const changedDays = Math.round((moveEvent.clientX - startX) / pixelsPerDay);
       const proposedEndDate = addDays(originalEndDate, changedDays);
 
-      if (new Date(proposedEndDate) < new Date(task.start_date as string)) {
-        return;
-      }
+      if (new Date(proposedEndDate) < new Date(task.start_date as string)) return;
 
       setTasks((current) =>
         current.map((item) =>
-          item.id === task.id
-            ? {
-                ...item,
-                end_date: proposedEndDate
-              }
-            : item
+          item.id === task.id ? { ...item, end_date: proposedEndDate } : item
         )
       );
     }
@@ -502,13 +457,9 @@ export default function ProgrammeGantt() {
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", onPointerUp);
 
-      const deltaX = upEvent.clientX - startX;
-      const changedDays = Math.round(deltaX / pixelsPerDay);
+      const changedDays = Math.round((upEvent.clientX - startX) / pixelsPerDay);
 
-      if (changedDays === 0) {
-        setMessage("Resize cancelled");
-        return;
-      }
+      if (changedDays === 0) return;
 
       const finalEndDate = addDays(originalEndDate, changedDays);
 
@@ -518,13 +469,9 @@ export default function ProgrammeGantt() {
         return;
       }
 
-      setMessage(`Updating duration by ${changedDays} day(s)...`);
-
       const { error } = await supabase
         .from("programme_tasks")
-        .update({
-          end_date: finalEndDate
-        })
+        .update({ end_date: finalEndDate })
         .eq("id", task.id);
 
       if (error) {
@@ -550,26 +497,24 @@ export default function ProgrammeGantt() {
         Status: {message}
         <br />
         Role: {role || "Loading..."}
-        {role === "subcontractor"
-          ? ` | Trade: ${userTrade || "Not set"}`
-          : ""}
+        {role === "subcontractor" ? ` | Trade: ${userTrade || "Not set"}` : ""}
         <br />
         Editing Enabled: {canEdit ? "Yes" : "No"}
       </div>
 
       <div className="card no-print">
         <h2>Select Site</h2>
-
-        <select
-          value={selectedSite}
-          onChange={(event) => handleSiteChange(event.target.value)}
-        >
+        <select value={selectedSite} onChange={(event) => handleSiteChange(event.target.value)}>
           {sites.map((site) => (
             <option key={site.id} value={site.id}>
               {site.site_name}
             </option>
           ))}
         </select>
+
+        <a href="/site-admin" style={{ marginLeft: 12 }}>
+          <button type="button">Site Admin</button>
+        </a>
       </div>
 
       {canEdit && (
@@ -577,11 +522,15 @@ export default function ProgrammeGantt() {
           <h2>Add Task</h2>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <input
-              placeholder="Plot"
-              value={plotNumber}
-              onChange={(event) => setPlotNumber(event.target.value)}
-            />
+            <select value={plotNumber} onChange={(event) => setPlotNumber(event.target.value)}>
+              <option value="">Select plot</option>
+              {plots.map((plot) => (
+                <option key={plot.id} value={plot.plot_number}>
+                  Plot {plot.plot_number}
+                  {plot.plot_name ? ` - ${plot.plot_name}` : ""}
+                </option>
+              ))}
+            </select>
 
             <input
               placeholder="Task"
@@ -589,36 +538,19 @@ export default function ProgrammeGantt() {
               onChange={(event) => setTaskName(event.target.value)}
             />
 
-            <select
-              value={trade}
-              onChange={(event) => setTrade(event.target.value)}
-            >
-              <option>Electrical</option>
-              <option>Plumbing</option>
-              <option>Drylining</option>
-              <option>Joinery</option>
-              <option>Brickwork</option>
-              <option>Roofing</option>
-              <option>Decorating</option>
-              <option>Groundworks</option>
+            <select value={trade} onChange={(event) => setTrade(event.target.value)}>
+              <option value="">Select trade</option>
+              {trades.map((item) => (
+                <option key={item.id} value={item.trade_name}>
+                  {item.trade_name}
+                </option>
+              ))}
             </select>
 
-            <input
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-            />
+            <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
 
-            <input
-              type="date"
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-            />
-
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
               <option>Planned</option>
               <option>In Progress</option>
               <option>Complete</option>
@@ -638,48 +570,29 @@ export default function ProgrammeGantt() {
           <h2>Edit Task</h2>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <input
-              placeholder="Plot"
-              value={editPlotNumber}
-              onChange={(event) => setEditPlotNumber(event.target.value)}
-            />
-
-            <input
-              placeholder="Task"
-              value={editTaskName}
-              onChange={(event) => setEditTaskName(event.target.value)}
-            />
-
-            <select
-              value={editTrade}
-              onChange={(event) => setEditTrade(event.target.value)}
-            >
-              <option>Electrical</option>
-              <option>Plumbing</option>
-              <option>Drylining</option>
-              <option>Joinery</option>
-              <option>Brickwork</option>
-              <option>Roofing</option>
-              <option>Decorating</option>
-              <option>Groundworks</option>
+            <select value={editPlotNumber} onChange={(event) => setEditPlotNumber(event.target.value)}>
+              {plots.map((plot) => (
+                <option key={plot.id} value={plot.plot_number}>
+                  Plot {plot.plot_number}
+                  {plot.plot_name ? ` - ${plot.plot_name}` : ""}
+                </option>
+              ))}
             </select>
 
-            <input
-              type="date"
-              value={editStartDate}
-              onChange={(event) => setEditStartDate(event.target.value)}
-            />
+            <input value={editTaskName} onChange={(event) => setEditTaskName(event.target.value)} />
 
-            <input
-              type="date"
-              value={editEndDate}
-              onChange={(event) => setEditEndDate(event.target.value)}
-            />
+            <select value={editTrade} onChange={(event) => setEditTrade(event.target.value)}>
+              {trades.map((item) => (
+                <option key={item.id} value={item.trade_name}>
+                  {item.trade_name}
+                </option>
+              ))}
+            </select>
 
-            <select
-              value={editStatus}
-              onChange={(event) => setEditStatus(event.target.value)}
-            >
+            <input type="date" value={editStartDate} onChange={(event) => setEditStartDate(event.target.value)} />
+            <input type="date" value={editEndDate} onChange={(event) => setEditEndDate(event.target.value)} />
+
+            <select value={editStatus} onChange={(event) => setEditStatus(event.target.value)}>
               <option>Planned</option>
               <option>In Progress</option>
               <option>Complete</option>
@@ -687,28 +600,9 @@ export default function ProgrammeGantt() {
               <option>Delayed</option>
             </select>
 
-            <button type="button" onClick={saveTaskChanges}>
-              Save Changes
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => {
-                setSelectedTask(null);
-                setMessage("Edit cancelled");
-              }}
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              className="danger-button"
-              onClick={() => deleteTask(selectedTask)}
-            >
-              Delete
-            </button>
+            <button type="button" onClick={saveTaskChanges}>Save Changes</button>
+            <button type="button" className="secondary-button" onClick={() => setSelectedTask(null)}>Cancel</button>
+            <button type="button" className="danger-button" onClick={() => deleteTask(selectedTask)}>Delete</button>
           </div>
         </div>
       )}
@@ -716,24 +610,9 @@ export default function ProgrammeGantt() {
       <div className="card">
         <h2>Programme Timeline</h2>
 
-        <p>
-          {range.start.toLocaleDateString("en-GB")} →{" "}
-          {range.end.toLocaleDateString("en-GB")}
-        </p>
-
-        {canEdit ? (
-          <p>
-            Double click a bar to edit. Drag bars left/right to move tasks. Drag
-            the right edge to change duration. Click × to delete.
-          </p>
-        ) : (
-          <p>
-            View only. Subcontractors can suggest changes but cannot edit the
-            programme directly.
-          </p>
+        {plotRows.length === 0 && (
+          <p>No plots added yet. Go to Site Admin to add plots.</p>
         )}
-
-        {datedTasks.length === 0 && <p>No dated tasks to show.</p>}
 
         <DndContext onDragEnd={handleDragEnd}>
           <div className="gantt-wrap">
@@ -743,9 +622,7 @@ export default function ProgrammeGantt() {
 
                 <div
                   className="gantt-date-bar"
-                  style={{
-                    gridTemplateColumns: `repeat(${range.days}, minmax(70px, 1fr))`
-                  }}
+                  style={{ gridTemplateColumns: `repeat(${range.days}, minmax(70px, 1fr))` }}
                 >
                   {dateColumns.map((date, index) => (
                     <div key={index} className="gantt-date-cell">
@@ -755,27 +632,20 @@ export default function ProgrammeGantt() {
                 </div>
               </div>
 
-              {tasksByPlot.map(([plot, plotTasks]) => (
+              {plotRows.map((plot) => (
                 <div className="gantt-row" key={plot}>
                   <div className="gantt-label">Plot {plot}</div>
 
                   <div
                     className="gantt-track gantt-grid"
-                    style={{
-                      backgroundSize: `${100 / range.days}% 100%`
-                    }}
+                    style={{ backgroundSize: `${100 / range.days}% 100%` }}
                   >
-                    {plotTasks.map((task) => {
+                    {tasksForPlot(plot).map((task) => {
                       const start = new Date(task.start_date as string);
                       const end = new Date(task.end_date as string);
 
-                      const offset =
-                        (daysBetween(range.start, start) / range.days) * 100;
-
-                      const width = Math.max(
-                        4,
-                        ((daysBetween(start, end) + 1) / range.days) * 100
-                      );
+                      const offset = (daysBetween(range.start, start) / range.days) * 100;
+                      const width = Math.max(4, ((daysBetween(start, end) + 1) / range.days) * 100);
 
                       return (
                         <DraggableTaskBar
@@ -783,6 +653,7 @@ export default function ProgrammeGantt() {
                           task={task}
                           left={offset}
                           width={width}
+                          colour={getTradeColour(task.trade)}
                           canEdit={canEdit}
                           onResizeStart={handleResizeStart}
                           onDelete={deleteTask}
