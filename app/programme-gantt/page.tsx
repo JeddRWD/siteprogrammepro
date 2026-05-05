@@ -19,6 +19,8 @@ type Task = {
   status: string | null;
 };
 
+type Scale = "daily" | "weekly";
+
 function daysBetween(a: Date, b: Date) {
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
@@ -34,6 +36,14 @@ function formatDate(date: Date) {
     day: "2-digit",
     month: "short"
   });
+}
+
+function startOfWeek(date: Date) {
+  const newDate = new Date(date);
+  const day = newDate.getDay();
+  const diff = newDate.getDate() - day + (day === 0 ? -6 : 1);
+  newDate.setDate(diff);
+  return newDate;
 }
 
 function DraggableTaskBar({
@@ -122,6 +132,7 @@ export default function ProgrammeGantt() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedSite, setSelectedSite] = useState("");
   const [message, setMessage] = useState("");
+  const [scale, setScale] = useState<Scale>("daily");
 
   const [plotNumber, setPlotNumber] = useState("");
   const [taskName, setTaskName] = useState("");
@@ -249,10 +260,7 @@ export default function ProgrammeGantt() {
   }
 
   async function addTask() {
-    if (!canEdit) {
-      setMessage("You do not have permission to add tasks.");
-      return;
-    }
+    if (!canEdit) return setMessage("You do not have permission to add tasks.");
 
     if (!selectedSite || !plotNumber || !taskName || !trade || !startDate || !endDate) {
       setMessage("Enter plot, task, trade, start date and end date.");
@@ -377,18 +385,37 @@ export default function ProgrammeGantt() {
     const starts = datedTasks.map((task) => new Date(task.start_date as string));
     const ends = datedTasks.map((task) => new Date(task.end_date as string));
 
-    const start = new Date(Math.min(...starts.map((date) => date.getTime())));
-    const end = new Date(Math.max(...ends.map((date) => date.getTime())));
+    let start = new Date(Math.min(...starts.map((date) => date.getTime())));
+    let end = new Date(Math.max(...ends.map((date) => date.getTime())));
+
+    if (scale === "weekly") {
+      start = startOfWeek(start);
+      const endWeek = startOfWeek(end);
+      endWeek.setDate(endWeek.getDate() + 6);
+      end = endWeek;
+    }
 
     return {
       start,
       end,
       days: Math.max(1, daysBetween(start, end) + 1)
     };
-  }, [datedTasks]);
+  }, [datedTasks, scale]);
 
   const dateColumns = useMemo(() => {
     const dates = [];
+
+    if (scale === "weekly") {
+      const weeks = Math.ceil(range.days / 7);
+
+      for (let i = 0; i < weeks; i++) {
+        const date = new Date(range.start);
+        date.setDate(range.start.getDate() + i * 7);
+        dates.push(date);
+      }
+
+      return dates;
+    }
 
     for (let i = 0; i < range.days; i++) {
       const date = new Date(range.start);
@@ -397,7 +424,9 @@ export default function ProgrammeGantt() {
     }
 
     return dates;
-  }, [range]);
+  }, [range, scale]);
+
+  const columnCount = scale === "weekly" ? Math.ceil(range.days / 7) : range.days;
 
   const plotRows = useMemo(() => {
     const plotNumbers = new Set<string>();
@@ -528,7 +557,11 @@ export default function ProgrammeGantt() {
 
       <div className="card no-print">
         <h2>Select Site</h2>
-        <select value={selectedSite} onChange={(event) => handleSiteChange(event.target.value)}>
+
+        <select
+          value={selectedSite}
+          onChange={(event) => handleSiteChange(event.target.value)}
+        >
           {sites.map((site) => (
             <option key={site.id} value={site.id}>
               {site.site_name}
@@ -536,16 +569,26 @@ export default function ProgrammeGantt() {
           ))}
         </select>
 
+        <select
+          value={scale}
+          onChange={(event) => setScale(event.target.value as Scale)}
+          style={{ marginLeft: 12 }}
+        >
+          <option value="daily">Daily View</option>
+          <option value="weekly">Weekly View</option>
+        </select>
+
         <a href="/site-admin" style={{ marginLeft: 12 }}>
           <button type="button">Site Admin</button>
+        </a>
 
         <button
-  type="button"
-  onClick={() => window.print()}
-  style={{ marginLeft: 12 }}
->
-  Print Gantt
-</button></a>
+          type="button"
+          onClick={() => window.print()}
+          style={{ marginLeft: 12 }}
+        >
+          Print Gantt
+        </button>
       </div>
 
       {canEdit && (
@@ -647,26 +690,32 @@ export default function ProgrammeGantt() {
         </div>
       )}
 
-      <div className="card">
+      <div className="card gantt-print-card">
         <h2>Programme Timeline</h2>
 
-        {plotRows.length === 0 && (
-          <p>No plots added yet. Go to Site Admin to add plots.</p>
-        )}
+        <p>
+          View: {scale === "daily" ? "Daily" : "Weekly"} |{" "}
+          {range.start.toLocaleDateString("en-GB")} →{" "}
+          {range.end.toLocaleDateString("en-GB")}
+        </p>
 
         <DndContext onDragEnd={handleDragEnd}>
           <div className="gantt-wrap">
-            <div className="gantt">
+            <div className={scale === "weekly" ? "gantt gantt-weekly" : "gantt"}>
               <div className="gantt-header-row">
                 <div className="gantt-label gantt-header-label">Plot</div>
 
                 <div
                   className="gantt-date-bar"
-                  style={{ gridTemplateColumns: `repeat(${range.days}, minmax(70px, 1fr))` }}
+                  style={{
+                    gridTemplateColumns: `repeat(${columnCount}, minmax(${
+                      scale === "weekly" ? "120px" : "70px"
+                    }, 1fr))`
+                  }}
                 >
                   {dateColumns.map((date, index) => (
                     <div key={index} className="gantt-date-cell">
-                      {formatDate(date)}
+                      {scale === "weekly" ? `W/C ${formatDate(date)}` : formatDate(date)}
                     </div>
                   ))}
                 </div>
@@ -678,14 +727,19 @@ export default function ProgrammeGantt() {
 
                   <div
                     className="gantt-track gantt-grid"
-                    style={{ backgroundSize: `${100 / range.days}% 100%` }}
+                    style={{
+                      backgroundSize: `${100 / columnCount}% 100%`
+                    }}
                   >
                     {tasksForPlot(plot).map((task) => {
                       const start = new Date(task.start_date as string);
                       const end = new Date(task.end_date as string);
 
                       const offset = (daysBetween(range.start, start) / range.days) * 100;
-                      const width = Math.max(4, ((daysBetween(start, end) + 1) / range.days) * 100);
+                      const width = Math.max(
+                        4,
+                        ((daysBetween(start, end) + 1) / range.days) * 100
+                      );
 
                       return (
                         <DraggableTaskBar
