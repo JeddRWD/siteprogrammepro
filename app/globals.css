@@ -1,3 +1,5 @@
+/* Reset */
+
 * {
   box-sizing: border-box;
 }
@@ -37,28 +39,16 @@ main {
 /* Branding */
 
 .brand {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 35px;
+  margin-bottom: 30px;
 }
 
-.logo {
-  width: 48px;
-  height: 48px;
+/* Logo full width aligned with buttons */
+.logo-full {
+  width: calc(100% - 28px); /* matches nav padding */
+  height: auto;
+  display: block;
+  margin: 0 auto;
   border-radius: 12px;
-  object-fit: cover;
-}
-
-.brand h2 {
-  font-size: 18px;
-  margin: 0;
-}
-
-.brand p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  opacity: 0.8;
 }
 
 /* Navigation */
@@ -75,6 +65,7 @@ nav a {
   padding: 13px 14px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.08);
+  font-weight: 500;
 }
 
 nav a:hover {
