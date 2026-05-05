@@ -22,16 +22,25 @@ type Trade = {
   colour: string;
 };
 
+type TaskTemplate = {
+  id: string;
+  site_id: string;
+  task_name: string;
+};
+
 export default function SiteAdmin() {
   const [role, setRole] = useState("");
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSite, setSelectedSite] = useState("");
   const [plots, setPlots] = useState<Plot[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
+
   const [plotNumber, setPlotNumber] = useState("");
   const [plotName, setPlotName] = useState("");
   const [tradeName, setTradeName] = useState("");
   const [tradeColour, setTradeColour] = useState("#1368b3");
+  const [taskTemplateName, setTaskTemplateName] = useState("");
   const [message, setMessage] = useState("");
 
   const canAdmin = role === "site_manager" || role === "contracts_manager";
@@ -63,9 +72,14 @@ export default function SiteAdmin() {
 
     if (data && data.length > 0) {
       setSelectedSite(data[0].id);
-      loadPlots(data[0].id);
-      loadTrades(data[0].id);
+      loadSiteAdminData(data[0].id);
     }
+  }
+
+  async function loadSiteAdminData(siteId: string) {
+    loadPlots(siteId);
+    loadTrades(siteId);
+    loadTaskTemplates(siteId);
   }
 
   async function loadPlots(siteId: string) {
@@ -88,22 +102,24 @@ export default function SiteAdmin() {
     setTrades(data || []);
   }
 
+  async function loadTaskTemplates(siteId: string) {
+    const { data } = await supabase
+      .from("task_templates")
+      .select("*")
+      .eq("site_id", siteId)
+      .order("task_name", { ascending: true });
+
+    setTaskTemplates(data || []);
+  }
+
   function changeSite(siteId: string) {
     setSelectedSite(siteId);
-    loadPlots(siteId);
-    loadTrades(siteId);
+    loadSiteAdminData(siteId);
   }
 
   async function addPlot() {
-    if (!canAdmin) {
-      setMessage("You do not have permission.");
-      return;
-    }
-
-    if (!selectedSite || !plotNumber) {
-      setMessage("Enter a plot number.");
-      return;
-    }
+    if (!canAdmin) return setMessage("You do not have permission.");
+    if (!selectedSite || !plotNumber) return setMessage("Enter a plot number.");
 
     const { error } = await supabase.from("plots").insert({
       site_id: selectedSite,
@@ -111,10 +127,7 @@ export default function SiteAdmin() {
       plot_name: plotName || null
     });
 
-    if (error) {
-      setMessage("Plot error: " + error.message);
-      return;
-    }
+    if (error) return setMessage("Plot error: " + error.message);
 
     setPlotNumber("");
     setPlotName("");
@@ -123,30 +136,19 @@ export default function SiteAdmin() {
   }
 
   async function deletePlot(id: string) {
-    const confirmed = window.confirm("Delete this plot?");
-    if (!confirmed) return;
+    if (!window.confirm("Delete this plot?")) return;
 
     const { error } = await supabase.from("plots").delete().eq("id", id);
 
-    if (error) {
-      setMessage("Delete plot error: " + error.message);
-      return;
-    }
+    if (error) return setMessage("Delete plot error: " + error.message);
 
     setMessage("Plot deleted");
     loadPlots(selectedSite);
   }
 
   async function addTrade() {
-    if (!canAdmin) {
-      setMessage("You do not have permission.");
-      return;
-    }
-
-    if (!selectedSite || !tradeName) {
-      setMessage("Enter a trade name.");
-      return;
-    }
+    if (!canAdmin) return setMessage("You do not have permission.");
+    if (!selectedSite || !tradeName) return setMessage("Enter a trade name.");
 
     const { error } = await supabase.from("trades").insert({
       site_id: selectedSite,
@@ -154,10 +156,7 @@ export default function SiteAdmin() {
       colour: tradeColour
     });
 
-    if (error) {
-      setMessage("Trade error: " + error.message);
-      return;
-    }
+    if (error) return setMessage("Trade error: " + error.message);
 
     setTradeName("");
     setTradeColour("#1368b3");
@@ -166,18 +165,47 @@ export default function SiteAdmin() {
   }
 
   async function deleteTrade(id: string) {
-    const confirmed = window.confirm("Delete this trade?");
-    if (!confirmed) return;
+    if (!window.confirm("Delete this trade?")) return;
 
     const { error } = await supabase.from("trades").delete().eq("id", id);
 
-    if (error) {
-      setMessage("Delete trade error: " + error.message);
-      return;
-    }
+    if (error) return setMessage("Delete trade error: " + error.message);
 
     setMessage("Trade deleted");
     loadTrades(selectedSite);
+  }
+
+  async function addTaskTemplate() {
+    if (!canAdmin) return setMessage("You do not have permission.");
+
+    if (!selectedSite || !taskTemplateName) {
+      return setMessage("Enter a task name.");
+    }
+
+    const { error } = await supabase.from("task_templates").insert({
+      site_id: selectedSite,
+      task_name: taskTemplateName
+    });
+
+    if (error) return setMessage("Task template error: " + error.message);
+
+    setTaskTemplateName("");
+    setMessage("Task template added");
+    loadTaskTemplates(selectedSite);
+  }
+
+  async function deleteTaskTemplate(id: string) {
+    if (!window.confirm("Delete this task template?")) return;
+
+    const { error } = await supabase
+      .from("task_templates")
+      .delete()
+      .eq("id", id);
+
+    if (error) return setMessage("Delete task template error: " + error.message);
+
+    setMessage("Task template deleted");
+    loadTaskTemplates(selectedSite);
   }
 
   useEffect(() => {
@@ -333,6 +361,54 @@ export default function SiteAdmin() {
                         type="button"
                         className="danger-button"
                         onClick={() => deleteTrade(trade.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <h2>Add Task Template</h2>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input
+                placeholder="Task name e.g. 1st Fix Electrical"
+                value={taskTemplateName}
+                onChange={(event) => setTaskTemplateName(event.target.value)}
+              />
+
+              <button type="button" onClick={addTaskTemplate}>
+                Add Task Template
+              </button>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Task Templates</h2>
+
+            {taskTemplates.length === 0 && <p>No task templates added yet.</p>}
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Task Name</th>
+                  <th></th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {taskTemplates.map((task) => (
+                  <tr key={task.id}>
+                    <td>{task.task_name}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="danger-button"
+                        onClick={() => deleteTaskTemplate(task.id)}
                       >
                         Delete
                       </button>
