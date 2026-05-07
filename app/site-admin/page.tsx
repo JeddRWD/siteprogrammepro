@@ -253,31 +253,51 @@ export default function SiteAdmin() {
     setMessage("Task template deleted");
     loadTaskTemplates(selectedSite);
   }
+async function addProgrammeTemplateItem() {
+  setMessage("Add Template Item clicked...");
 
-  async function addProgrammeTemplateItem() {
-    if (!canAdmin) return setMessage("You do not have permission.");
+  if (!canAdmin) {
+    setMessage("You do not have permission.");
+    return;
+  }
 
-    if (!selectedSite || !templateTaskName || !templateTrade) {
-      return setMessage("Choose a task and trade.");
-    }
+  if (!selectedSite) {
+    setMessage("No site selected.");
+    return;
+  }
 
-    const duration = Number(templateDuration);
-    const gap = Number(templateGap);
-    const order = Number(templateOrder);
+  if (!templateTaskName) {
+    setMessage("No task selected.");
+    return;
+  }
 
-    if (Number.isNaN(duration) || duration < 1) {
-      return setMessage("Duration must be at least 1 working day.");
-    }
+  if (!templateTrade) {
+    setMessage("No trade selected.");
+    return;
+  }
 
-    if (Number.isNaN(gap) || gap < 0) {
-      return setMessage("Gap must be 0 or more working days.");
-    }
+  const duration = Number(templateDuration);
+  const gap = Number(templateGap);
+  const order = Number(templateOrder);
 
-    if (Number.isNaN(order) || order < 1) {
-      return setMessage("Order must be 1 or more.");
-    }
+  if (Number.isNaN(duration) || duration < 1) {
+    setMessage("Duration must be at least 1 working day.");
+    return;
+  }
 
-    const { error } = await supabase.from("programme_template_items").insert({
+  if (Number.isNaN(gap) || gap < 0) {
+    setMessage("Gap must be 0 or more working days.");
+    return;
+  }
+
+  if (Number.isNaN(order) || order < 1) {
+    setMessage("Order must be 1 or more.");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("programme_template_items")
+    .insert({
       site_id: selectedSite,
       sequence_order: order,
       task_name: templateTaskName,
@@ -285,19 +305,23 @@ export default function SiteAdmin() {
       duration_working_days: duration,
       gap_working_days: gap,
       exclude_weekends: templateExcludeWeekends
-    });
+    })
+    .select();
 
-    if (error) {
-      return setMessage("Programme template error: " + error.message);
-    }
-
-    setTemplateOrder(String(programmeTemplateItems.length + 2));
-    setTemplateDuration("1");
-    setTemplateGap("0");
-    setTemplateExcludeWeekends(true);
-    setMessage("Programme template item added");
-    loadProgrammeTemplateItems(selectedSite);
+  if (error) {
+    setMessage("Programme template error: " + error.message);
+    return;
   }
+
+  setMessage("Programme template item added: " + data?.[0]?.task_name);
+
+  setTemplateOrder(String(programmeTemplateItems.length + 2));
+  setTemplateDuration("1");
+  setTemplateGap("0");
+  setTemplateExcludeWeekends(true);
+
+  loadProgrammeTemplateItems(selectedSite);
+}
 
   async function deleteProgrammeTemplateItem(id: string) {
     if (!window.confirm("Delete this programme template item?")) return;
