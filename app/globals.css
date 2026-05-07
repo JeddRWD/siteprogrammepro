@@ -624,6 +624,45 @@ td {
 
 .gantt-resize-handle {
   width: 8px;
+/* Gantt readability override - keep at bottom */
+
+.gantt-row {
+  min-height: 96px !important;
 }
+
+.gantt-track {
+  height: 78px !important;
 }
+
+.gantt-bar {
+  top: 14px !important;
+  height: 50px !important;
+  min-width: 90px !important;
+  padding: 8px 30px 8px 10px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.gantt-bar-text {
+  white-space: normal !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  padding-right: 20px !important;
+}
+
+.gantt-delete-button {
+  top: 14px !important;
+  right: 10px !important;
+  z-index: 10 !important;
+}
+
+.gantt-resize-handle {
+  width: 9px !important;
+  z-index: 9 !important;
 }
