@@ -1,5 +1,3 @@
-/* Reset */
-
 * {
   box-sizing: border-box;
 }
@@ -33,18 +31,17 @@ body {
 }
 
 main {
-  max-width: 1400px;
+  max-width: 1600px;
 }
 
-/* Branding */
+/* Logo */
 
 .brand {
   margin-bottom: 30px;
 }
 
-/* Logo full width aligned with buttons */
 .logo-full {
-  width: calc(100% - 28px); /* matches nav padding */
+  width: calc(100% - 28px);
   height: auto;
   display: block;
   margin: 0 auto;
@@ -72,7 +69,7 @@ nav a:hover {
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* Headings */
+/* Typography */
 
 h1 {
   font-size: 34px;
@@ -93,7 +90,7 @@ h2 {
   margin-bottom: 20px;
 }
 
-/* Grid + Stats */
+/* Grid / Stats */
 
 .grid {
   display: grid;
@@ -210,48 +207,155 @@ td {
   background: #fafcff;
 }
 
-/* Gantt */
+/* Gantt Layout */
 
 .gantt-wrap {
   overflow-x: auto;
-  padding-bottom: 10px;
+  padding-bottom: 14px;
 }
 
 .gantt {
-  min-width: 900px;
+  min-width: 1000px;
 }
+
+.gantt-weekly {
+  min-width: 1000px;
+}
+
+.gantt-header-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: stretch;
+  border-bottom: 2px solid #cfd8e3;
+  margin-bottom: 8px;
+}
+
+.gantt-header-label {
+  background: #e9f3ff;
+  border-radius: 10px 0 0 10px;
+}
+
+.gantt-date-bar {
+  display: grid;
+  background: #e9f3ff;
+  border-radius: 0 10px 10px 0;
+  overflow: hidden;
+}
+
+.gantt-date-cell {
+  font-size: 11px;
+  font-weight: bold;
+  color: #0f2747;
+  text-align: center;
+  padding: 10px 4px;
+  border-left: 1px solid #cfd8e3;
+  white-space: nowrap;
+}
+
+/* Gantt Rows */
 
 .gantt-row {
   display: grid;
   grid-template-columns: 180px 1fr;
   align-items: center;
   border-bottom: 1px solid #edf1f5;
-  min-height: 52px;
+  min-height: 96px;
 }
 
 .gantt-label {
   font-weight: bold;
   padding: 10px;
+  font-size: 13px;
 }
 
 .gantt-track {
   position: relative;
-  height: 36px;
-  background: #f1f5f9;
+  height: 76px;
+  background-color: #f1f5f9;
   border-radius: 10px;
+  overflow: hidden;
 }
+
+/* Day / Week Grid */
+
+.gantt-grid {
+  background-image: linear-gradient(
+    to right,
+    rgba(15, 39, 71, 0.14) 1px,
+    transparent 1px
+  );
+}
+
+/* Gantt Task Bars */
 
 .gantt-bar {
   position: absolute;
-  top: 6px;
-  height: 24px;
-  border-radius: 8px;
-  background: #1368b3;
+  top: 13px;
+  height: 50px;
+  min-width: 95px;
+  border-radius: 10px;
   color: white;
-  font-size: 11px;
-  padding: 5px 8px;
+  padding: 7px 34px 7px 10px;
+  font-size: 10px;
+  line-height: 1.18;
+  font-weight: bold;
   overflow: hidden;
-  white-space: nowrap;
+  white-space: normal;
+  text-overflow: clip;
+  touch-action: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.16);
+}
+
+.gantt-bar-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  padding-right: 18px;
+}
+
+/* Delete Button */
+
+.gantt-delete-button {
+  position: absolute;
+  right: 12px;
+  top: 15px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  color: white;
+  font-size: 14px;
+  line-height: 20px;
+  z-index: 10;
+}
+
+.gantt-delete-button:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Resize Handle */
+
+.gantt-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 9px;
+  height: 100%;
+  cursor: ew-resize;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 0 10px 10px 0;
+  z-index: 9;
+}
+
+.gantt-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.75);
 }
 
 /* Print */
@@ -267,7 +371,8 @@ td {
   }
 
   .sidebar,
-  .no-print {
+  .no-print,
+  .status-box {
     display: none !important;
   }
 
@@ -276,22 +381,26 @@ td {
   }
 
   .main-content {
-    padding: 0;
+    padding: 0 !important;
   }
 
   main {
     max-width: none;
   }
 
-  .card,
+  .card {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
   table {
     box-shadow: none;
     border-radius: 0;
   }
 
   button,
-  nav,
-  .status-box {
+  nav {
     display: none !important;
   }
 
@@ -299,13 +408,42 @@ td {
     display: block;
   }
 
-  th {
-    background: #eeeeee !important;
+  .gantt-wrap {
+    overflow: visible !important;
+  }
+
+  .gantt,
+  .gantt-weekly {
+    min-width: 100% !important;
+  }
+
+  .gantt-row {
+    min-height: 70px;
+  }
+
+  .gantt-track {
+    height: 56px;
+  }
+
+  .gantt-bar {
+    top: 8px;
+    height: 40px;
+    font-size: 8px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .gantt-date-cell {
+    font-size: 9px;
+  }
+
+  .gantt-label {
+    font-size: 10px;
   }
 
   @page {
-    size: A4 landscape;
-    margin: 10mm;
+    size: A3 landscape;
+    margin: 8mm;
   }
 }
 
@@ -331,339 +469,8 @@ td {
   table {
     font-size: 13px;
   }
-}
-.gantt-header-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  align-items: stretch;
-  border-bottom: 2px solid #cfd8e3;
-  margin-bottom: 6px;
-}
-
-.gantt-header-label {
-  background: #e9f3ff;
-  border-radius: 10px 0 0 10px;
-}
-
-.gantt-date-bar {
-  display: grid;
-  background: #e9f3ff;
-  border-radius: 0 10px 10px 0;
-  overflow: hidden;
-}
-
-.gantt-date-cell {
-  font-size: 11px;
-  font-weight: bold;
-  color: #0f2747;
-  text-align: center;
-  padding: 10px 4px;
-  border-left: 1px solid #cfd8e3;
-  white-space: nowrap;
-}
-
-.gantt-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  align-items: center;
-  border-bottom: 1px solid #edf1f5;
-  min-height: 64px;
-}
-
-.gantt-track {
-  position: relative;
-  height: 48px;
-  background: #f1f5f9;
-  border-radius: 10px;
-}
-
-.gantt-bar {
-  position: absolute;
-  top: 8px;
-  height: 32px;
-  border-radius: 8px;
-  color: white;
-  font-size: 11px;
-  padding: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.gantt-header-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  align-items: stretch;
-  border-bottom: 2px solid #cfd8e3;
-  margin-bottom: 6px;
-}
-
-.gantt-header-label {
-  background: #e9f3ff;
-  border-radius: 10px 0 0 10px;
-}
-
-.gantt-date-bar {
-  display: grid;
-  background: #e9f3ff;
-  border-radius: 0 10px 10px 0;
-  overflow: hidden;
-}
-
-.gantt-date-cell {
-  font-size: 11px;
-  font-weight: bold;
-  color: #0f2747;
-  text-align: center;
-  padding: 10px 4px;
-  border-left: 1px solid #cfd8e3;
-  white-space: nowrap;
-}
-
-.gantt-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  align-items: center;
-  border-bottom: 1px solid #edf1f5;
-  min-height: 64px;
-}
-
-.gantt-track {
-  position: relative;
-  height: 48px;
-  background: #f1f5f9;
-  border-radius: 10px;
-}
-
-.gantt-bar {
-  position: absolute;
-  top: 8px;
-  height: 32px;
-  border-radius: 8px;
-  color: white;
-  font-size: 11px;
-  padding: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  touch-action: none;
-  user-select: none;
-}
-.gantt-resize-handle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 10px;
-  height: 100%;
-  cursor: ew-resize;
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 0 8px 8px 0;
-}
-
-.gantt-resize-handle:hover {
-  background: rgba(255, 255, 255, 0.65);
-}
-.gantt-resize-handle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 10px;
-  height: 100%;
-  cursor: ew-resize;
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 0 8px 8px 0;
-}
-
-.gantt-resize-handle:hover {
-  background: rgba(255, 255, 255, 0.65);
-}
-.gantt-grid {
-  background-image: linear-gradient(
-    to right,
-    rgba(15, 39, 71, 0.12) 1px,
-    transparent 1px
-  );
-}
-
-.gantt-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.gantt-bar-text {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  padding-right: 24px;
-}
-
-.gantt-delete-button {
-  position: absolute;
-  right: 12px;
-  top: 6px;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.25);
-  color: white;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.gantt-delete-button:hover {
-  background: rgba(0, 0, 0, 0.45);
-}
-
-.gantt-resize-handle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 8px;
-  height: 100%;
-  cursor: ew-resize;
-  background: rgba(255, 255, 255, 0.45);
-  border-radius: 0 8px 8px 0;
-  z-index: 3;
-  @media print {
-  .no-print,
-  .sidebar,
-  .status-box {
-    display: none !important;
-  }
-
-  .main-content {
-    padding: 0 !important;
-  }
-
-  .card {
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-  }
-
-  .gantt-wrap {
-    overflow: visible !important;
-  }
 
   .gantt {
-    min-width: 100% !important;
+    min-width: 900px;
   }
-
-  .gantt-bar {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
-
-  @page {
-    size: A3 landscape;
-    margin: 8mm;
-  }
-}
-}
-
-.gantt-resize-handle:hover {
-  background: rgba(255, 255, 255, 0.75);
-  .gantt-weekly {
-  min-width: 900px;
-}
-
-@media print {
-  .gantt-weekly {
-    min-width: 100% !important;
-  }
-
-  .gantt-print-card {
-    page-break-inside: avoid;
-  }
-
-  .gantt-date-cell {
-    font-size: 10px;
-  }
-
-  .gantt-label {
-    font-size: 11px;
-  }
-
-  .gantt-bar {
-    font-size: 9px;
-  }
-.gantt-row {
-  min-height: 86px;
-}
-
-.gantt-track {
-  height: 68px;
-}
-
-.gantt-bar {
-  top: 12px;
-  height: 44px;
-  padding: 8px 26px 8px 10px;
-  font-size: 10px;
-  line-height: 1.15;
-  white-space: normal;
-  display: flex;
-  align-items: center;
-}
-
-.gantt-bar-text {
-  white-space: normal;
-  overflow: hidden;
-  text-overflow: clip;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  padding-right: 18px;
-}
-
-.gantt-delete-button {
-  top: 12px;
-  right: 10px;
-}
-
-.gantt-resize-handle {
-  width: 8px;
-/* Gantt readability override - keep at bottom */
-
-.gantt-row {
-  min-height: 96px !important;
-}
-
-.gantt-track {
-  height: 78px !important;
-}
-
-.gantt-bar {
-  top: 14px !important;
-  height: 50px !important;
-  min-width: 90px !important;
-  padding: 8px 30px 8px 10px !important;
-  font-size: 10px !important;
-  line-height: 1.2 !important;
-  white-space: normal !important;
-  display: flex !important;
-  align-items: center !important;
-}
-
-.gantt-bar-text {
-  white-space: normal !important;
-  overflow: hidden !important;
-  text-overflow: clip !important;
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
-  padding-right: 20px !important;
-}
-
-.gantt-delete-button {
-  top: 14px !important;
-  right: 10px !important;
-  z-index: 10 !important;
-}
-
-.gantt-resize-handle {
-  width: 9px !important;
-  z-index: 9 !important;
-  
 }
